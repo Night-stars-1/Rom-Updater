@@ -1,0 +1,5 @@
+*.exe
+/ota-server
+# Runtime data
+/releases.json
+/files/

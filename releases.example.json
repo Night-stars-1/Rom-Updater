@@ -1,0 +1,11 @@
+{
+  "releases": [
+    {
+      "device": "diting",
+      "channel": "release",
+      "version": "17.0-20261007",
+      "changelog": "本次更新说明",
+      "file": "uwu_diting-20261007.zip"
+    }
+  ]
+}

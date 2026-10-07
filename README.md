@@ -1,0 +1,77 @@
+# Rom-Updater
+
+ROM OTA 更新服务端，Go 标准库实现，无第三方依赖。
+
+- `GET /ota/{device}/{channel}.json`：查询当前发布的版本
+- `GET|HEAD /ota/files/{file}`：下载 OTA 包，支持 `Range`/206、`Content-Range`、`Accept-Ranges`、`If-Range`；ETag 为包的 SHA-256
+- `PUT /admin/files/{file}.zip`、`POST /admin/releases`：上传与发布（需设置 `OTA_ADMIN_TOKEN`）
+
+`build_timestamp`、`incremental`、`type` 从包内 `META-INF/com/android/metadata` 读取（`post-timestamp`、`post-build-incremental`、`pre-build`），`size`、`sha256` 由服务端计算，不需要手填。
+
+## 运行
+
+### Docker
+
+```bash
+docker run -d --name ota -p 8080:8080 \
+  -v ota-data:/data \
+  -e OTA_ADMIN_TOKEN=换成随机长字符串 \
+  ghcr.io/night-stars-1/rom-updater:0.1 \
+  -base-url https://ota.example.com
+```
+
+容器监听 8080 端口、使用纯 HTTP，需在前面放 HTTPS 反向代理。数据目录 `/data`：
+
+```
+/data/releases.json   发布清单（不存在时为空，可通过发布接口生成）
+/data/files/*.zip     OTA 包
+```
+
+### 直接运行
+
+```bash
+go build -o ota-server .
+OTA_ADMIN_TOKEN=... ./ota-server -base-url https://ota.example.com \
+  -tls-cert cert.pem -tls-key key.pem -addr :443
+```
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `-base-url` | 必填 | 对外地址，用于生成包下载 URL |
+| `-addr` | `:8443` | 监听地址 |
+| `-manifest` | `releases.json` | 发布清单 |
+| `-files` | `files` | OTA 包目录 |
+| `-tls-cert` / `-tls-key` | 空 | 证书；不填则为纯 HTTP |
+| `-max-upload` | 8 GiB | 上传大小上限（字节） |
+
+环境变量 `OTA_ADMIN_TOKEN` 未设置时，管理接口不注册（返回 404）。
+
+## 发布新 ROM
+
+1. 上传包，`sha256` 可选，填写后服务端会校验：
+
+   ```bash
+   curl -T uwu_diting-20261008.zip \
+     -H "Authorization: Bearer $OTA_ADMIN_TOKEN" \
+     "https://ota.example.com/admin/files/uwu_diting-20261008.zip?sha256=$(sha256sum uwu_diting-20261008.zip | cut -d' ' -f1)"
+   ```
+
+   返回 201 和包的元数据。上传后不对外公开；同名文件已存在返回 409，不允许覆盖。
+
+2. 发布：
+
+   ```bash
+   curl -X POST -H "Authorization: Bearer $OTA_ADMIN_TOKEN" -H "Content-Type: application/json" \
+     -d '{"device":"diting","channel":"release","version":"17.0-20261008","changelog":"更新说明","file":"uwu_diting-20261008.zip"}' \
+     https://ota.example.com/admin/releases
+   ```
+
+   服务端检查包内 `pre-device` 包含 `device`，然后写回 `releases.json`，立即生效。
+
+也可以手动把包放进 `files/` 并编辑 `releases.json`（格式见 `releases.example.json`），服务端会自动重新加载。务必先放包、再改清单。
+
+## 注意
+
+- 每个版本用新的文件名，不要覆盖正在被下载的包。
+- 旧包不会自动删除，确认没有客户端在下载后再手动清理。
+- 首次加载某个包时需要计算 SHA-256，期间其他请求会等待；通过上传接口进来的包已在上传时计算过。
