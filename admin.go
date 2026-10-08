@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"crypto/subtle"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,9 @@ import (
 	"path/filepath"
 	"strings"
 )
+
+//go:embed web/admin.html
+var adminHTML []byte
 
 type admin struct {
 	cat       *catalog
@@ -150,6 +154,66 @@ func (a *admin) publish(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("published %s/%s -> %s (%s)", rc.Device, rc.Channel, target, rc.Version)
 	writeJSON(w, http.StatusOK, rel)
+}
+
+func (a *admin) listState(w http.ResponseWriter, r *http.Request) {
+	s, err := a.cat.state()
+	if err != nil {
+		log.Printf("admin state: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, http.StatusOK, s)
+}
+
+func (a *admin) unpublish(w http.ResponseWriter, r *http.Request) {
+	device, channel := r.PathValue("device"), r.PathValue("channel")
+	if err := a.cat.unpublish(device, channel); err != nil {
+		if errors.Is(err, errReleaseMissing) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		log.Printf("unpublish %s/%s: %v", device, channel, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	log.Printf("unpublished %s/%s", device, channel)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *admin) deletePackage(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if !validFileName(name) {
+		http.Error(w, "invalid file name", http.StatusBadRequest)
+		return
+	}
+	if err := a.cat.deletePackage(name); err != nil {
+		switch {
+		case errors.Is(err, errPackageInUse):
+			http.Error(w, err.Error(), http.StatusConflict)
+		case errors.Is(err, os.ErrNotExist):
+			http.Error(w, "package not found", http.StatusNotFound)
+		default:
+			log.Printf("delete %s: %v", name, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+	log.Printf("deleted %s", name)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// serveUI serves the single-page admin console. It is static and holds no
+// secrets; every API call it makes carries the bearer token.
+func serveUI(w http.ResponseWriter, r *http.Request) {
+	h := w.Header()
+	h.Set("Content-Type", "text/html; charset=utf-8")
+	h.Set("Cache-Control", "no-cache")
+	h.Set("Content-Security-Policy", "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Referrer-Policy", "no-referrer")
+	w.Write(adminHTML)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

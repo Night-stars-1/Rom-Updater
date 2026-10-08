@@ -47,8 +47,13 @@ func main() {
 	// Read from the environment so the token stays out of the process list.
 	if token := os.Getenv("OTA_ADMIN_TOKEN"); token != "" {
 		a := &admin{cat: cat, token: []byte(token), maxUpload: *maxUpload}
+		mux.HandleFunc("GET /admin/{$}", serveUI)
+		mux.Handle("GET /admin", http.RedirectHandler("/admin/", http.StatusMovedPermanently))
+		mux.HandleFunc("GET /admin/state", a.authorize(a.listState))
 		mux.HandleFunc("PUT /admin/files/{name}", a.authorize(a.upload))
+		mux.HandleFunc("DELETE /admin/files/{name}", a.authorize(a.deletePackage))
 		mux.HandleFunc("POST /admin/releases", a.authorize(a.publish))
+		mux.HandleFunc("DELETE /admin/releases/{device}/{channel}", a.authorize(a.unpublish))
 	} else {
 		log.Printf("OTA_ADMIN_TOKEN not set; admin API disabled")
 	}

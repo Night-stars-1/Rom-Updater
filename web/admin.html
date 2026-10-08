@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rom-Updater 管理后台</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #eef1f4; --bg-dot: #d9dee5; --surface: #ffffff; --surface-2: #f5f7f9; --surface-3: #ebeef2;
+  --fg: #131820; --muted: #5f6877; --border: #dfe3e9; --border-strong: #c9d0d9;
+  --accent: #0e9f7b; --accent-strong: #0a8064; --accent-fg: #ffffff;
+  --danger: #d23b3b; --ok: #10925c; --warn: #b8741a; --info: #3a6fd8;
+  --shadow: 0 1px 2px rgb(16 24 40 / .05), 0 8px 24px -12px rgb(16 24 40 / .12);
+  --shadow-lg: 0 24px 64px -16px rgb(16 24 40 / .35);
+  --radius: 14px; --radius-sm: 8px;
+  --mono: ui-monospace, "JetBrains Mono", "Cascadia Code", SFMono-Regular, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0e12; --bg-dot: #1a2028; --surface: #13181e; --surface-2: #181e26; --surface-3: #212833;
+    --fg: #e7ebf1; --muted: #8b95a4; --border: #232a34; --border-strong: #323b47;
+    --accent: #2fd6a3; --accent-strong: #5ee4bb; --accent-fg: #03261c;
+    --danger: #ff6b6b; --ok: #3ddc97; --warn: #f3b850; --info: #7aa7ff;
+    --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 8px 24px -12px rgb(0 0 0 / .6);
+    --shadow-lg: 0 24px 64px -16px rgb(0 0 0 / .8);
+  }
+}
+* { box-sizing: border-box; }
+html { min-height: 100%; }
+body {
+  margin: 0; min-height: 100vh;
+  font: 14px/1.55 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--fg);
+  background:
+    radial-gradient(1200px 480px at 85% -10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
+    radial-gradient(var(--bg-dot) 1px, transparent 1px) 0 0 / 22px 22px,
+    var(--bg);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent-strong); text-decoration: none; }
+a:hover { text-decoration: underline; }
+svg.icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Header */
+header {
+  display: flex; align-items: center; gap: 14px; padding: 12px 28px;
+  position: sticky; top: 0; z-index: 5;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.logo {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px;
+  color: var(--accent-fg);
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, var(--info)));
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.logo svg.icon { width: 18px; height: 18px; stroke-width: 2.4; }
+.brand h1 { font-size: 15px; margin: 0; letter-spacing: .2px; line-height: 1.2; }
+.brand .sub { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--muted);
+}
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
+.pill:empty, #loaded-at:empty { display: none; }
+header .spacer { flex: 1; }
+#loaded-at { font-size: 12px; }
+
+/* Layout */
+main { max-width: 1320px; margin: 0 auto; padding: 28px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+section.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px 22px 20px; box-shadow: var(--shadow);
+}
+section.card > h2 { font-size: 15px; font-weight: 650; margin: 0 0 16px; display: flex; align-items: center; gap: 10px; }
+section.card > h2 .h-icon {
+  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px;
+  color: var(--accent-strong); background: color-mix(in srgb, var(--accent) 13%, transparent);
+}
+section.card > h2 .count {
+  font: 600 11px/1 var(--mono); padding: 4px 8px; border-radius: 999px;
+  color: var(--muted); background: var(--surface-3);
+}
+section.card > h2 .count:empty { display: none; }
+section.card > h2 .spacer { flex: 1; }
+section.card > h2 .desc { font-size: 12px; font-weight: 400; color: var(--muted); }
+.muted { color: var(--muted); }
+.strong { font-weight: 600; }
+code, .mono { font-family: var(--mono); font-size: 12px; }
+code { background: var(--surface-3); padding: 1px 5px; border-radius: 4px; }
+
+/* Tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+table { width: 100%; min-width: 820px; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th {
+  font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; white-space: nowrap;
+  color: var(--muted); background: var(--surface-2);
+}
+tbody tr { transition: background-color .12s; }
+tbody tr:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+tr:last-child td { border-bottom: none; }
+td.actions { white-space: nowrap; text-align: right; }
+td.changelog { max-width: 300px; white-space: pre-wrap; word-break: break-word; color: var(--muted); }
+td .mono { word-break: break-all; }
+.empty { text-align: center; color: var(--muted); padding: 40px 24px !important; }
+.empty::before { content: "∅"; display: block; font-size: 22px; opacity: .5; margin-bottom: 4px; }
+
+/* Controls */
+button, .btn {
+  font: inherit; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 6px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+  background: var(--surface); color: var(--fg); cursor: pointer;
+  transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s, transform .05s;
+}
+button:hover:not(:disabled) { background: var(--surface-2); border-color: var(--accent); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary {
+  background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600;
+  box-shadow: 0 4px 14px -6px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+button.primary:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
+button.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+button.ghost:hover:not(:disabled) { color: var(--fg); background: var(--surface-3); border-color: transparent; }
+button.danger { color: var(--danger); }
+button.danger:hover:not(:disabled) { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+button.small { padding: 3px 10px; font-size: 12px; border-radius: 6px; }
+input, select, textarea {
+  font: inherit; padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+  background: var(--surface-2); color: var(--fg); width: 100%;
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
+}
+input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--muted) 70%, transparent); }
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--accent); background: var(--surface);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+input:read-only:not([type=file]) { color: var(--muted); background: var(--surface-3); }
+input[type=file] { padding: 6px; cursor: pointer; border-style: dashed; }
+input[type=file]::file-selector-button {
+  font: inherit; font-weight: 500; margin-right: 10px; padding: 4px 12px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg);
+}
+textarea { min-height: 110px; resize: vertical; line-height: 1.5; }
+label { display: grid; gap: 6px; font-size: 13px; font-weight: 500; }
+label .hint { font-size: 12px; font-weight: 400; color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* Feedback */
+.banner {
+  padding: 10px 14px 10px 16px; border-radius: var(--radius-sm); white-space: pre-wrap; word-break: break-word;
+  border: 1px solid; border-left-width: 4px;
+}
+.banner.error { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, transparent); background: color-mix(in srgb, var(--danger) 9%, var(--surface)); border-left-color: var(--danger); }
+.banner.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 35%, transparent); background: color-mix(in srgb, var(--warn) 10%, var(--surface)); border-left-color: var(--warn); }
+.tag {
+  display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; font-size: 12px; line-height: 18px;
+  margin: 1px 4px 1px 0; white-space: nowrap; color: var(--muted); background: var(--surface-3);
+}
+.tag.browser, .tag.app, .tag.err { background: color-mix(in srgb, currentColor 13%, transparent); }
+.tag.browser { color: var(--warn); }
+.tag.app { color: var(--ok); }
+.tag.err { color: var(--danger); }
+.tag.browser::before, .tag.app::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; }
+
+/* Upload */
+#upload-progress { margin-top: 16px; display: grid; gap: 6px; }
+#upload-status { font-size: 12px; font-family: var(--mono); }
+progress {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border: none; border-radius: 999px;
+  overflow: hidden; background: var(--surface-3);
+}
+progress::-webkit-progress-bar { background: var(--surface-3); border-radius: 999px; }
+progress::-webkit-progress-value { background: linear-gradient(90deg, var(--accent), var(--info)); border-radius: 999px; transition: width .2s; }
+progress::-moz-progress-bar { background: linear-gradient(90deg, var(--accent), var(--info)); border-radius: 999px; }
+progress:indeterminate {
+  background: repeating-linear-gradient(-45deg, var(--surface-3) 0 10px, color-mix(in srgb, var(--accent) 35%, var(--surface-3)) 10px 20px) 0 0 / 200% 100%;
+  animation: stripes 1s linear infinite;
+}
+progress:indeterminate::-webkit-progress-bar { background: transparent; }
+progress:indeterminate::-moz-progress-bar { background: transparent; }
+@keyframes stripes { to { background-position: 28px 0; } }
+
+/* Login */
+#login {
+  max-width: 400px; margin: 12vh auto 0; padding: 32px 30px 28px;
+  box-shadow: var(--shadow-lg);
+}
+#login .logo { width: 44px; height: 44px; border-radius: 12px; margin-bottom: 16px; }
+#login .logo svg.icon { width: 22px; height: 22px; }
+#login h2 { margin: 0 0 4px; font-size: 20px; }
+#login .lead { margin: 0 0 22px; color: var(--muted); font-size: 13px; }
+#login form { display: grid; gap: 14px; }
+#login button.primary { padding: 9px 14px; }
+
+/* Dialog */
+dialog {
+  border: 1px solid var(--border); border-radius: 18px; background: var(--surface); color: var(--fg);
+  padding: 24px 26px; width: min(760px, 94vw); box-shadow: var(--shadow-lg);
+}
+dialog[open] { animation: pop .18s ease-out; }
+dialog::backdrop { background: rgb(5 8 12 / .55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+@keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+dialog h2 { margin: 0 0 18px; font-size: 17px; display: flex; align-items: center; gap: 10px; }
+dialog h2::before { content: ""; width: 4px; height: 18px; border-radius: 2px; background: var(--accent); }
+dialog form { display: grid; gap: 14px; }
+dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6px -26px -24px; padding: 14px 26px; border-top: 1px solid var(--border); background: var(--surface-2); border-radius: 0 0 18px 18px; }
+
+/* Toast */
+#toast { position: fixed; right: 24px; bottom: 24px; display: grid; gap: 10px; z-index: 10; }
+#toast div {
+  padding: 11px 16px 11px 14px; border-radius: 10px; max-width: 420px; white-space: pre-wrap; word-break: break-word;
+  background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--info);
+  box-shadow: var(--shadow-lg); animation: slide .2s ease-out;
+}
+#toast div.error { border-left-color: var(--danger); color: var(--danger); }
+#toast div.ok { border-left-color: var(--ok); }
+@keyframes slide { from { opacity: 0; transform: translateX(16px); } }
+
+@media (max-width: 720px) {
+  header { padding: 10px 16px; flex-wrap: wrap; }
+  main { padding: 16px; }
+  section.card { padding: 16px; }
+  #base-url { order: 9; width: 100%; justify-content: center; }
+  #loaded-at { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="logo"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></span>
+    <div>
+      <h1>Rom-Updater</h1>
+      <div class="sub">OTA Console</div>
+    </div>
+  </div>
+  <span id="base-url" class="pill mono"></span>
+  <span class="spacer"></span>
+  <span id="loaded-at" class="muted"></span>
+  <button id="refresh" class="ghost" hidden><svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>刷新</button>
+  <button id="logout" class="ghost" hidden><svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>退出</button>
+</header>
+
+<section id="login" class="card" hidden>
+  <span class="logo"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+  <h2>登录管理后台</h2>
+  <p class="lead">使用服务端配置的管理令牌访问 OTA 发布控制台。</p>
+  <form id="login-form">
+    <label>管理令牌
+      <input id="token" type="password" autocomplete="current-password" required placeholder="OTA_ADMIN_TOKEN">
+      <span class="hint">令牌只保存在当前标签页（sessionStorage），关闭标签页即失效。</span>
+    </label>
+    <div id="login-error" class="banner error" hidden></div>
+    <button class="primary" type="submit">登录</button>
+  </form>
+</section>
+
+<main id="app" hidden>
+  <div id="state-error" class="banner error" hidden></div>
+
+  <section class="card">
+    <h2><span class="h-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M5 12.5 10 17l9-10"/></svg></span>已发布版本
+      <span id="release-count" class="count"></span><span class="spacer"></span>
+      <button id="new-release" class="primary"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>新建发布</button></h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>设备</th><th>通道</th><th>版本</th><th>分发方式</th><th>包 / 下载地址</th><th>更新说明</th><th></th>
+        </tr></thead>
+        <tbody id="releases"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="h-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M20 15v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4"/></svg></span>上传 OTA 包
+      <span class="desc">上传完成后自动打开发布窗口</span></h2>
+    <form id="upload-form" class="grid">
+      <label>文件（*.zip）
+        <input id="upload-file" type="file" accept=".zip,application/zip" required>
+      </label>
+      <label>SHA-256（可选）
+        <input id="upload-sha" class="mono" pattern="[0-9a-fA-F]{64}" placeholder="填写后服务端校验">
+        <span class="hint">sha256sum 文件名 的输出；留空则不校验。</span>
+      </label>
+      <div class="row" style="align-self: end">
+        <button id="upload-start" class="primary" type="submit"><svg class="icon" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/></svg>上传</button>
+        <button id="upload-cancel" type="button" hidden>取消</button>
+      </div>
+    </form>
+    <div id="upload-progress" hidden>
+      <progress id="upload-bar" max="1" value="0"></progress>
+      <div id="upload-status" class="muted"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="h-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg></span>OTA 包
+      <span id="package-count" class="count"></span></h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>文件</th><th>大小</th><th>类型</th><th>设备</th><th>构建时间</th><th>Incremental</th><th>SHA-256</th><th>被引用</th><th></th>
+        </tr></thead>
+        <tbody id="packages"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<dialog id="publish-dialog">
+  <h2 id="publish-title">发布</h2>
+  <form id="publish-form">
+    <div class="grid">
+      <label>设备 *<input name="device" required placeholder="diting"></label>
+      <label>通道 *<input name="channel" required placeholder="release"></label>
+      <label>版本 *<input name="version" required placeholder="17.0-20261008"></label>
+      <label>分发方式
+        <select name="delivery">
+          <option value="app">应用内下载安装</option>
+          <option value="browser">浏览器打开链接</option>
+        </select>
+      </label>
+    </div>
+    <label>OTA 包
+      <select name="file"></select>
+      <span class="hint" id="file-hint"></span>
+    </label>
+    <div id="browser-fields" class="grid" hidden>
+      <label style="grid-column: 1 / -1">下载地址
+        <input name="download_url" type="url" placeholder="https://…">
+        <span class="hint">必须为 https；选择了 OTA 包时可留空，默认使用本服务的包地址。</span>
+      </label>
+    </div>
+    <div id="external-fields" class="grid" hidden>
+      <label>构建时间 *<input name="build_time" type="datetime-local" step="1"></label>
+      <label>Incremental *<input name="incremental"></label>
+      <label>大小（字节）<input name="size" type="number" min="0" step="1"></label>
+      <label>类型
+        <select name="type">
+          <option value="">未指定</option>
+          <option value="full">full</option>
+          <option value="incremental">incremental</option>
+        </select>
+      </label>
+    </div>
+    <label>更新说明<textarea name="changelog"></textarea></label>
+    <div id="publish-warn" class="banner warn" hidden></div>
+    <div id="publish-error" class="banner error" hidden></div>
+    <div class="footer">
+      <button type="button" id="publish-close">取消</button>
+      <button type="submit" class="primary" id="publish-submit">发布</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+const $ = id => document.getElementById(id);
+const TOKEN_KEY = 'ota-admin-token';
+let state = null;
+
+// el builds DOM nodes from text only, so manifest and package values can never
+// inject markup.
+function el(tag, props, ...children) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else if (k === 'class') n.className = v;
+    else n.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of children.flat()) {
+    if (c === undefined || c === null || c === false) continue;
+    n.append(c instanceof Node ? c : String(c));
+  }
+  return n;
+}
+
+function fmtSize(n) {
+  if (!n) return '—';
+  const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+  let i = 0, v = n;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return (i ? v.toFixed(2) : v) + ' ' + units[i];
+}
+
+function fmtTime(unixSeconds) {
+  return unixSeconds ? new Date(unixSeconds * 1000).toLocaleString() : '—';
+}
+
+function toast(msg, kind) {
+  const n = el('div', { class: kind || '' }, msg);
+  $('toast').append(n);
+  setTimeout(() => n.remove(), kind === 'error' ? 8000 : 3000);
+}
+
+function showBanner(id, msg) {
+  const n = $(id);
+  n.textContent = msg || '';
+  n.hidden = !msg;
+}
+
+class AuthError extends Error {}
+
+async function api(method, path, body) {
+  const headers = { Authorization: 'Bearer ' + sessionStorage.getItem(TOKEN_KEY) };
+  const init = { method, headers, cache: 'no-store' };
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    init.body = JSON.stringify(body);
+  }
+  const res = await fetch(path, init);
+  if (res.status === 401) {
+    logout('令牌无效或已更换，请重新登录。');
+    throw new AuthError('unauthorized');
+  }
+  const text = await res.text();
+  if (!res.ok) throw new Error(text.trim() || res.status + ' ' + res.statusText);
+  return text ? JSON.parse(text) : null;
+}
+
+function logout(reason) {
+  sessionStorage.removeItem(TOKEN_KEY);
+  state = null;
+  $('app').hidden = $('refresh').hidden = $('logout').hidden = true;
+  $('login').hidden = false;
+  $('base-url').textContent = $('loaded-at').textContent = '';
+  showBanner('login-error', reason);
+  $('token').focus();
+}
+
+async function load() {
+  try {
+    state = await api('GET', '/admin/state');
+  } catch (e) {
+    if (e instanceof AuthError) return false;
+    showBanner(state ? 'state-error' : 'login-error', '加载失败：' + e.message);
+    if (!state) $('login').hidden = false;
+    return false;
+  }
+  $('login').hidden = true;
+  $('app').hidden = $('refresh').hidden = $('logout').hidden = false;
+  $('base-url').textContent = state.base_url;
+  $('loaded-at').textContent = '更新于 ' + new Date().toLocaleTimeString();
+  showBanner('state-error', state.error && '清单或包有错误，客户端当前收到 503：\n' + state.error);
+  renderReleases();
+  renderPackages();
+  return true;
+}
+
+function packageURL(file) {
+  return new URL(encodeURIComponent(file), state.base_url.replace(/\/?$/, '/')).href;
+}
+
+function renderReleases() {
+  const rows = [...state.releases].sort((a, b) =>
+    a.device.localeCompare(b.device) || a.channel.localeCompare(b.channel));
+  $('release-count').textContent = rows.length;
+  const known = new Set(state.packages.map(p => p.file));
+  $('releases').replaceChildren(...(rows.length ? rows.map(r => {
+    const browser = r.delivery === 'browser';
+    const target = [];
+    if (r.file) {
+      target.push(el('div', { class: 'mono' }, r.file));
+      if (!known.has(r.file)) target.push(el('span', { class: 'tag err' }, '包不存在'));
+    }
+    if (r.download_url) {
+      target.push(el('a', { href: r.download_url, target: '_blank', rel: 'noreferrer', class: 'mono' }, r.download_url));
+    }
+    if (browser && !r.file) {
+      target.push(el('div', { class: 'muted' },
+        `${fmtTime(r.build_timestamp)} · ${r.incremental}` + (r.size ? ' · ' + fmtSize(r.size) : '') + (r.type ? ' · ' + r.type : '')));
+    }
+    return el('tr', {},
+      el('td', { class: 'strong' }, r.device),
+      el('td', {}, el('span', { class: 'tag' }, r.channel)),
+      el('td', { class: 'mono strong' }, r.version),
+      el('td', {}, el('span', { class: 'tag ' + (browser ? 'browser' : 'app') }, browser ? '浏览器' : '应用内')),
+      el('td', {}, target),
+      el('td', { class: 'changelog' }, r.changelog || el('span', { class: 'muted' }, '—')),
+      el('td', { class: 'actions' },
+        el('button', { class: 'small', onclick: () => openPublish({ release: r }) }, '编辑'), ' ',
+        el('button', { class: 'small danger', onclick: () => unpublish(r) }, '下架')));
+  }) : [el('tr', {}, el('td', { colspan: 7, class: 'empty' }, '尚未发布任何版本'))]));
+}
+
+function renderPackages() {
+  const rows = [...state.packages].sort((a, b) => b.mod_time.localeCompare(a.mod_time));
+  $('package-count').textContent = rows.length;
+  $('packages').replaceChildren(...(rows.length ? rows.map(p => {
+    const used = p.used_by.length > 0;
+    const name = used
+      // Only packages referenced by a release are publicly served.
+      ? el('a', { href: packageURL(p.file), class: 'mono', download: p.file }, p.file)
+      : el('span', { class: 'mono' }, p.file);
+    return el('tr', {},
+      el('td', {}, name, p.error && el('div', { class: 'tag err' }, p.error)),
+      el('td', { title: p.size + ' 字节' }, fmtSize(p.size)),
+      el('td', {}, p.type || '—'),
+      el('td', {}, (p.devices || []).map(d => el('span', { class: 'tag' }, d))),
+      el('td', {}, fmtTime(p.build_timestamp)),
+      el('td', { class: 'mono' }, p.incremental || '—'),
+      el('td', { class: 'mono', title: p.sha256 || '' },
+        p.sha256 ? p.sha256.slice(0, 12) + '…' : el('span', { class: 'muted' }, '未计算')),
+      el('td', {}, used ? p.used_by.map(u => el('span', { class: 'tag' }, u)) : el('span', { class: 'muted' }, '—')),
+      el('td', { class: 'actions' },
+        el('button', { class: 'small', disabled: !!p.error, onclick: () => openPublish({ file: p.file }) }, '发布'), ' ',
+        el('button', {
+          class: 'small danger', disabled: used, onclick: () => deletePackage(p),
+          title: used ? '先下架引用它的版本' : null,
+        }, '删除')));
+  }) : [el('tr', {}, el('td', { colspan: 9, class: 'empty' }, '还没有上传任何包'))]));
+}
+
+async function unpublish(r) {
+  if (!confirm(`下架 ${r.device}/${r.channel}（${r.version}）？\n客户端将查询不到该通道的更新，包文件保留。`)) return;
+  try {
+    await api('DELETE', `/admin/releases/${encodeURIComponent(r.device)}/${encodeURIComponent(r.channel)}`);
+    toast(`已下架 ${r.device}/${r.channel}`, 'ok');
+  } catch (e) {
+    if (!(e instanceof AuthError)) toast('下架失败：' + e.message, 'error');
+  }
+  load();
+}
+
+async function deletePackage(p) {
+  if (!confirm(`永久删除 ${p.file}？此操作不可撤销。`)) return;
+  try {
+    await api('DELETE', '/admin/files/' + encodeURIComponent(p.file));
+    toast('已删除 ' + p.file, 'ok');
+  } catch (e) {
+    if (!(e instanceof AuthError)) toast('删除失败：' + e.message, 'error');
+  }
+  load();
+}
+
+// Upload uses XHR rather than fetch: fetch exposes no upload progress, and
+// packages are multiple GB.
+let uploadXHR = null;
+
+function upload(file, sha) {
+  let path = '/admin/files/' + encodeURIComponent(file.name);
+  if (sha) path += '?sha256=' + encodeURIComponent(sha.toLowerCase());
+  const xhr = uploadXHR = new XMLHttpRequest();
+  xhr.open('PUT', path);
+  xhr.setRequestHeader('Authorization', 'Bearer ' + sessionStorage.getItem(TOKEN_KEY));
+  xhr.setRequestHeader('Content-Type', 'application/zip');
+
+  const bar = $('upload-bar'), status = $('upload-status');
+  const started = performance.now();
+  bar.removeAttribute('value');
+  status.textContent = '连接中…';
+  $('upload-progress').hidden = false;
+  $('upload-start').disabled = $('upload-file').disabled = $('upload-sha').disabled = true;
+  $('upload-cancel').hidden = false;
+
+  xhr.upload.onprogress = e => {
+    if (!e.lengthComputable) return;
+    bar.value = e.loaded / e.total;
+    const rate = e.loaded / ((performance.now() - started) / 1000);
+    status.textContent = e.loaded < e.total
+      ? `${fmtSize(e.loaded)} / ${fmtSize(e.total)} · ${fmtSize(rate)}/s`
+      : '上传完成，服务端校验中…';
+  };
+  const done = msg => {
+    uploadXHR = null;
+    $('upload-start').disabled = $('upload-file').disabled = $('upload-sha').disabled = false;
+    $('upload-cancel').hidden = true;
+    status.textContent = msg;
+  };
+  xhr.onload = () => {
+    if (xhr.status === 401) {
+      done('');
+      logout('令牌无效或已更换，请重新登录。');
+      return;
+    }
+    if (xhr.status !== 201) {
+      done('上传失败：' + (xhr.responseText.trim() || xhr.status));
+      toast('上传失败：' + (xhr.responseText.trim() || xhr.status), 'error');
+      return;
+    }
+    const p = JSON.parse(xhr.responseText);
+    bar.value = 1;
+    done(`已上传 ${p.file}：${p.type}，设备 ${p.devices.join(', ')}，${p.incremental}`);
+    toast('已上传 ' + p.file, 'ok');
+    $('upload-form').reset();
+    load().then(ok => ok && openPublish({ file: p.file }));
+  };
+  xhr.onerror = () => done('上传中断：网络错误');
+  xhr.onabort = () => done('已取消');
+  xhr.send(file);
+}
+
+function toLocalInput(unixSeconds) {
+  if (!unixSeconds) return '';
+  const d = new Date(unixSeconds * 1000);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+// editing holds the release being edited; its device/channel are fixed
+// because changing them would publish a second entry, not rename this one.
+let editing = null;
+
+function openPublish({ release, file }) {
+  editing = release || null;
+  const f = $('publish-form');
+  f.reset();
+  showBanner('publish-error', '');
+  $('publish-title').textContent = editing ? `编辑 ${editing.device}/${editing.channel}` : '新建发布';
+  f.device.readOnly = f.channel.readOnly = !!editing;
+
+  const r = release || {};
+  const pkg = state.packages.find(p => p.file === file);
+  f.device.value = r.device || (pkg && pkg.devices && pkg.devices.length === 1 ? pkg.devices[0] : '');
+  f.channel.value = r.channel || '';
+  f.version.value = r.version || '';
+  f.delivery.value = r.delivery === 'browser' ? 'browser' : 'app';
+  f.download_url.value = r.download_url || '';
+  f.changelog.value = r.changelog || '';
+  f.build_time.value = r.file ? '' : toLocalInput(r.build_timestamp);
+  f.incremental.value = r.file ? '' : r.incremental || '';
+  f.size.value = r.file || !r.size ? '' : r.size;
+  f.type.value = r.file ? '' : r.type || '';
+
+  fillFileOptions(release ? r.file : file || '');
+  syncPublishForm();
+  $('publish-dialog').showModal();
+  (editing ? f.version : f.device.value ? f.channel : f.device).focus();
+}
+
+function fillFileOptions(selected) {
+  const sel = $('publish-form').file;
+  const files = state.packages.filter(p => !p.error).map(p => p.file);
+  if (selected && !files.includes(selected)) files.unshift(selected);
+  sel.replaceChildren(
+    el('option', { value: '' }, '（不使用本服务的包，仅外部链接）'),
+    ...files.map(name => el('option', { value: name }, name)));
+  sel.value = selected;
+}
+
+// syncPublishForm mirrors validateRelease in catalog.go: which fields are
+// allowed and required depends on delivery and whether a package is chosen.
+function syncPublishForm() {
+  const f = $('publish-form');
+  const browser = f.delivery.value === 'browser';
+  const noFileOption = f.file.options[0];
+  noFileOption.disabled = !browser;
+  if (!browser && !f.file.value) {
+    const first = [...f.file.options].find(o => o.value);
+    f.file.value = first ? first.value : '';
+  }
+  const external = browser && !f.file.value;
+  $('browser-fields').hidden = !browser;
+  $('external-fields').hidden = !external;
+  f.file.required = !browser;
+  f.download_url.required = external;
+  f.build_time.required = f.incremental.required = external;
+
+  const pkg = state.packages.find(p => p.file === f.file.value);
+  $('file-hint').textContent = pkg
+    ? `${pkg.type || '?'} · ${fmtSize(pkg.size)} · 设备 ${(pkg.devices || []).join(', ')} · ${pkg.incremental || ''}`
+    : browser ? '构建信息需手动填写。' : '应用内分发必须选择一个已上传的包。';
+  const device = f.device.value.trim();
+  showBanner('publish-warn', pkg && device && pkg.devices && !pkg.devices.includes(device)
+    ? `该包的 pre-device 为 ${pkg.devices.join(', ')}，不包含 ${device}，服务端会拒绝发布。`
+    : '');
+}
+
+function publishBody() {
+  const f = $('publish-form');
+  const body = {
+    device: f.device.value.trim(),
+    channel: f.channel.value.trim(),
+    version: f.version.value.trim(),
+    changelog: f.changelog.value,
+    file: f.file.value,
+  };
+  if (f.delivery.value !== 'browser') return body;
+  body.delivery = 'browser';
+  if (f.download_url.value.trim()) body.download_url = f.download_url.value.trim();
+  if (!body.file) {
+    body.build_timestamp = Math.floor(new Date(f.build_time.value).getTime() / 1000);
+    body.incremental = f.incremental.value.trim();
+    if (f.size.value) body.size = Number(f.size.value);
+    if (f.type.value) body.type = f.type.value;
+  }
+  return body;
+}
+
+async function submitPublish(e) {
+  e.preventDefault();
+  const body = publishBody();
+  const exists = state.releases.some(r => r.device === body.device && r.channel === body.channel);
+  if (!editing && exists && !confirm(`${body.device}/${body.channel} 已有发布版本，确定覆盖？`)) return;
+  $('publish-submit').disabled = true;
+  showBanner('publish-error', '');
+  try {
+    const rel = await api('POST', '/admin/releases', body);
+    $('publish-dialog').close();
+    toast(`已发布 ${rel.device}/${rel.channel} → ${rel.version}`, 'ok');
+    load();
+  } catch (err) {
+    if (!(err instanceof AuthError)) showBanner('publish-error', '发布失败：' + err.message);
+    else $('publish-dialog').close();
+  } finally {
+    $('publish-submit').disabled = false;
+  }
+}
+
+$('login-form').addEventListener('submit', e => {
+  e.preventDefault();
+  sessionStorage.setItem(TOKEN_KEY, $('token').value);
+  $('token').value = '';
+  showBanner('login-error', '');
+  load();
+});
+$('logout').addEventListener('click', () => logout(''));
+$('refresh').addEventListener('click', load);
+$('new-release').addEventListener('click', () => openPublish({}));
+$('upload-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const file = $('upload-file').files[0];
+  if (file) upload(file, $('upload-sha').value.trim());
+});
+$('upload-cancel').addEventListener('click', () => uploadXHR && uploadXHR.abort());
+$('publish-form').addEventListener('submit', submitPublish);
+$('publish-form').addEventListener('change', syncPublishForm);
+$('publish-form').device.addEventListener('input', syncPublishForm);
+$('publish-close').addEventListener('click', () => $('publish-dialog').close());
+window.addEventListener('beforeunload', e => { if (uploadXHR) e.preventDefault(); });
+
+if (sessionStorage.getItem(TOKEN_KEY)) load();
+else logout('');
+</script>
+</body>
+</html>

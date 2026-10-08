@@ -17,7 +17,11 @@ import (
 	"time"
 )
 
-var errPackageExists = errors.New("package already exists")
+var (
+	errPackageExists  = errors.New("package already exists")
+	errPackageInUse   = errors.New("package is referenced by a release")
+	errReleaseMissing = errors.New("release not found")
+)
 
 // Delivery selects how an updater obtains the release. Empty and "app" mean
 // in-app download and install; "browser" opens a URL instead.
@@ -288,19 +292,154 @@ func (c *catalog) publish(r releaseConfig) (releaseResponse, error) {
 	} else {
 		m.Releases = append(m.Releases, r)
 	}
-	if err := writeManifest(c.manifestPath, m); err != nil {
+	if err := c.saveManifestLocked(m); err != nil {
 		return releaseResponse{}, err
 	}
-	st, err := os.Stat(c.manifestPath)
-	if err != nil {
-		return releaseResponse{}, fmt.Errorf("stat manifest: %w", err)
-	}
-	c.manifest, c.manifestMod, c.current = m, st.ModTime(), nil
 	snap, err := c.loadLocked()
 	if err != nil {
 		return releaseResponse{}, err
 	}
 	return snap.releases[r.Device+"/"+r.Channel], nil
+}
+
+// unpublish removes the device/channel release. Its package stays on disk.
+func (c *catalog) unpublish(device, channel string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if _, err := c.syncManifestLocked(); err != nil {
+		return err
+	}
+	m := manifest{Releases: slices.DeleteFunc(slices.Clone(c.manifest.Releases), func(e releaseConfig) bool {
+		return e.Device == device && e.Channel == channel
+	})}
+	if len(m.Releases) == len(c.manifest.Releases) {
+		return errReleaseMissing
+	}
+	if err := c.saveManifestLocked(m); err != nil {
+		return err
+	}
+	_, err := c.loadLocked()
+	return err
+}
+
+// deletePackage removes a package no release points at.
+func (c *catalog) deletePackage(name string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if _, err := c.syncManifestLocked(); err != nil {
+		return err
+	}
+	if slices.ContainsFunc(c.manifest.Releases, func(e releaseConfig) bool { return e.File == name }) {
+		return errPackageInUse
+	}
+	if err := os.Remove(filepath.Join(c.filesDir, name)); err != nil {
+		return err
+	}
+	delete(c.cache, name)
+	return nil
+}
+
+type adminState struct {
+	BaseURL  string          `json:"base_url"`
+	Error    string          `json:"error,omitempty"`
+	Releases []releaseConfig `json:"releases"`
+	Packages []packageState  `json:"packages"`
+}
+
+type packageState struct {
+	File           string    `json:"file"`
+	Size           int64     `json:"size"`
+	ModTime        time.Time `json:"mod_time"`
+	SHA256         string    `json:"sha256,omitempty"` // empty until first hashed
+	Type           string    `json:"type,omitempty"`
+	Devices        []string  `json:"devices,omitempty"`
+	BuildTimestamp int64     `json:"build_timestamp,omitempty"`
+	Incremental    string    `json:"incremental,omitempty"`
+	Error          string    `json:"error,omitempty"`
+	UsedBy         []string  `json:"used_by"`
+}
+
+// state lists the manifest and every package in filesDir. Packages that were
+// never hashed only get their (cheap) OTA metadata read, so listing a fresh
+// directory of multi-GB packages does not block on hashing.
+func (c *catalog) state() (adminState, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	s := adminState{BaseURL: c.baseURL.String()}
+	// A broken manifest or package is reported, not fatal, so the operator
+	// can still see and fix things from the UI.
+	if _, err := c.loadLocked(); err != nil {
+		s.Error = err.Error()
+	}
+	s.Releases = slices.Clone(c.manifest.Releases)
+	if s.Releases == nil {
+		s.Releases = []releaseConfig{}
+	}
+
+	entries, err := os.ReadDir(c.filesDir)
+	if err != nil {
+		return s, fmt.Errorf("list packages: %w", err)
+	}
+	s.Packages = []packageState{}
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !validFileName(name) {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		ps := packageState{File: name, Size: info.Size(), ModTime: info.ModTime(), UsedBy: []string{}}
+		for _, r := range c.manifest.Releases {
+			if r.File == name {
+				ps.UsedBy = append(ps.UsedBy, r.Device+"/"+r.Channel)
+			}
+		}
+		meta, err := c.packageMetaLocked(name, info)
+		if err != nil {
+			ps.Error = err.Error()
+		} else {
+			ps.Type, ps.Devices = meta.Meta.Type, meta.Meta.Devices
+			ps.BuildTimestamp, ps.Incremental = meta.Meta.BuildTimestamp, meta.Meta.Incremental
+			ps.SHA256 = meta.SHA256
+		}
+		s.Packages = append(s.Packages, ps)
+	}
+	return s, nil
+}
+
+// packageMetaLocked returns the cached packageInfo when it is current, or
+// metadata only (no SHA256) otherwise.
+func (c *catalog) packageMetaLocked(name string, info os.FileInfo) (*packageInfo, error) {
+	if p := c.cache[name]; p != nil && p.Size == info.Size() && p.ModTime.Equal(info.ModTime()) {
+		return p, nil
+	}
+	f, err := os.Open(filepath.Join(c.filesDir, name))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	meta, err := readOTAMetadata(f, info.Size())
+	if err != nil {
+		return nil, err
+	}
+	return &packageInfo{Meta: meta}, nil
+}
+
+func (c *catalog) saveManifestLocked(m manifest) error {
+	if err := writeManifest(c.manifestPath, m); err != nil {
+		return err
+	}
+	st, err := os.Stat(c.manifestPath)
+	if err != nil {
+		return fmt.Errorf("stat manifest: %w", err)
+	}
+	c.manifest, c.manifestMod, c.current = m, st.ModTime(), nil
+	return nil
 }
 
 func (c *catalog) refreshPackage(name string) (changed bool, err error) {

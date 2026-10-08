@@ -5,6 +5,7 @@ WORKDIR /src
 COPY go.mod ./
 RUN go mod download
 COPY *.go ./
+COPY web/ ./web/
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/ota-server . \
 	&& mkdir -p /out/data/files
 
