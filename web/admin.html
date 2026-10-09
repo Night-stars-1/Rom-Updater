@@ -95,18 +95,26 @@ code { background: var(--surface-3); padding: 1px 5px; border-radius: 4px; }
 
 /* Tables */
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
-table { width: 100%; min-width: 820px; border-collapse: collapse; }
+table { width: 100%; min-width: 760px; border-collapse: collapse; }
 th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
 th {
   font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; white-space: nowrap;
   color: var(--muted); background: var(--surface-2);
 }
-tbody tr { transition: background-color .12s; }
-tbody tr:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+td { background: var(--surface); transition: background-color .12s; }
+tbody tr:hover td { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
 tr:last-child td { border-bottom: none; }
+/* Actions stay reachable when a narrow viewport scrolls the table. */
+th:last-child, td.actions { position: sticky; right: 0; box-shadow: inset 1px 0 0 var(--border); }
 td.actions { white-space: nowrap; text-align: right; }
-td.changelog { max-width: 300px; white-space: pre-wrap; word-break: break-word; color: var(--muted); }
-td .mono { word-break: break-all; }
+.nowrap { white-space: nowrap; }
+.trunc { display: block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; font-size: 12px; color: var(--muted); }
+.sub .tag { margin: 0; }
+.clamp {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
+  min-width: 180px; max-width: 280px; white-space: pre-wrap; word-break: break-word; color: var(--muted);
+}
 .empty { text-align: center; color: var(--muted); padding: 40px 24px !important; }
 .empty::before { content: "∅"; display: block; font-size: 22px; opacity: .5; margin-bottom: 4px; }
 
@@ -136,21 +144,26 @@ input, select, textarea {
   background: var(--surface-2); color: var(--fg); width: 100%;
   transition: border-color .15s, box-shadow .15s, background-color .15s;
 }
+input, select { height: 38px; }
 input::placeholder, textarea::placeholder { color: color-mix(in srgb, var(--muted) 70%, transparent); }
 input:focus, select:focus, textarea:focus {
   outline: none; border-color: var(--accent); background: var(--surface);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 input:read-only:not([type=file]) { color: var(--muted); background: var(--surface-3); }
-input[type=file] { padding: 6px; cursor: pointer; border-style: dashed; }
+input[type=file] { padding: 4px 6px; cursor: pointer; border-style: dashed; }
 input[type=file]::file-selector-button {
   font: inherit; font-weight: 500; margin-right: 10px; padding: 4px 12px; border-radius: 6px; cursor: pointer;
   border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg);
 }
 textarea { min-height: 110px; resize: vertical; line-height: 1.5; }
 label { display: grid; gap: 6px; font-size: 13px; font-weight: 500; }
-label .hint { font-size: 12px; font-weight: 400; color: var(--muted); }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.hint { font-size: 12px; font-weight: 400; color: var(--muted); }
+#file-hint { margin-top: -8px; }
+.grid { display: grid; gap: 14px; }
+.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cols-1-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 /* Feedback */
@@ -171,6 +184,9 @@ label .hint { font-size: 12px; font-weight: 400; color: var(--muted); }
 .tag.browser::before, .tag.app::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; }
 
 /* Upload */
+.upload-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 14px; align-items: end; }
+.upload-row .row { flex-wrap: nowrap; }
+#upload-form > .hint { display: block; margin-top: 8px; }
 #upload-progress { margin-top: 16px; display: grid; gap: 6px; }
 #upload-status { font-size: 12px; font-family: var(--mono); }
 progress {
@@ -229,6 +245,8 @@ dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6p
   main { padding: 16px; }
   section.card { padding: 16px; }
   #base-url { order: 9; width: 100%; justify-content: center; }
+  .cols-2, .cols-3, .cols-1-2, .upload-row { grid-template-columns: minmax(0, 1fr); }
+  th:last-child, td.actions { position: static; box-shadow: none; }
   #loaded-at { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
@@ -275,7 +293,7 @@ dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6p
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>设备</th><th>通道</th><th>版本</th><th>分发方式</th><th>包 / 下载地址</th><th>更新说明</th><th></th>
+          <th>设备 / 通道</th><th>版本</th><th>分发方式</th><th>包 / 下载地址</th><th>更新说明</th><th></th>
         </tr></thead>
         <tbody id="releases"></tbody>
       </table>
@@ -285,18 +303,20 @@ dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6p
   <section class="card">
     <h2><span class="h-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M20 15v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4"/></svg></span>上传 OTA 包
       <span class="desc">上传完成后自动打开发布窗口</span></h2>
-    <form id="upload-form" class="grid">
-      <label>文件（*.zip）
-        <input id="upload-file" type="file" accept=".zip,application/zip" required>
-      </label>
-      <label>SHA-256（可选）
-        <input id="upload-sha" class="mono" pattern="[0-9a-fA-F]{64}" placeholder="填写后服务端校验">
-        <span class="hint">sha256sum 文件名 的输出；留空则不校验。</span>
-      </label>
-      <div class="row" style="align-self: end">
-        <button id="upload-start" class="primary" type="submit"><svg class="icon" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/></svg>上传</button>
-        <button id="upload-cancel" type="button" hidden>取消</button>
+    <form id="upload-form">
+      <div class="upload-row">
+        <label>文件（*.zip）
+          <input id="upload-file" type="file" accept=".zip,application/zip" required>
+        </label>
+        <label>SHA-256（可选）
+          <input id="upload-sha" class="mono" pattern="[0-9a-fA-F]{64}" placeholder="填写后服务端校验">
+        </label>
+        <div class="row">
+          <button id="upload-start" class="primary" type="submit"><svg class="icon" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/></svg>上传</button>
+          <button id="upload-cancel" type="button" hidden>取消</button>
+        </div>
       </div>
+      <span class="hint">SHA-256 填 <code>sha256sum 文件名</code> 的输出；留空则不校验。</span>
     </form>
     <div id="upload-progress" hidden>
       <progress id="upload-bar" max="1" value="0"></progress>
@@ -310,7 +330,7 @@ dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6p
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>文件</th><th>大小</th><th>类型</th><th>设备</th><th>构建时间</th><th>Incremental</th><th>SHA-256</th><th>被引用</th><th></th>
+          <th>文件</th><th>设备</th><th>构建</th><th>SHA-256</th><th>被引用</th><th></th>
         </tr></thead>
         <tbody id="packages"></tbody>
       </table>
@@ -321,28 +341,30 @@ dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6p
 <dialog id="publish-dialog">
   <h2 id="publish-title">发布</h2>
   <form id="publish-form">
-    <div class="grid">
+    <div class="grid cols-3">
       <label>设备 *<input name="device" required placeholder="diting"></label>
       <label>通道 *<input name="channel" required placeholder="release"></label>
       <label>版本 *<input name="version" required placeholder="17.0-20261008"></label>
+    </div>
+    <div class="grid cols-1-2">
       <label>分发方式
         <select name="delivery">
           <option value="app">应用内下载安装</option>
           <option value="browser">浏览器打开链接</option>
         </select>
       </label>
+      <label>OTA 包
+        <select name="file"></select>
+      </label>
     </div>
-    <label>OTA 包
-      <select name="file"></select>
-      <span class="hint" id="file-hint"></span>
-    </label>
+    <span class="hint" id="file-hint"></span>
     <div id="browser-fields" class="grid" hidden>
-      <label style="grid-column: 1 / -1">下载地址
+      <label>下载地址
         <input name="download_url" type="url" placeholder="https://…">
         <span class="hint">必须为 https；选择了 OTA 包时可留空，默认使用本服务的包地址。</span>
       </label>
     </div>
-    <div id="external-fields" class="grid" hidden>
+    <div id="external-fields" class="grid cols-2" hidden>
       <label>构建时间 *<input name="build_time" type="datetime-local" step="1"></label>
       <label>Incremental *<input name="incremental"></label>
       <label>大小（字节）<input name="size" type="number" min="0" step="1"></label>
@@ -475,27 +497,30 @@ function renderReleases() {
     const browser = r.delivery === 'browser';
     const target = [];
     if (r.file) {
-      target.push(el('div', { class: 'mono' }, r.file));
-      if (!known.has(r.file)) target.push(el('span', { class: 'tag err' }, '包不存在'));
+      target.push(el('span', { class: 'mono trunc', title: r.file }, r.file));
+      if (!known.has(r.file)) target.push(el('div', { class: 'sub' }, el('span', { class: 'tag err' }, '包不存在')));
     }
     if (r.download_url) {
-      target.push(el('a', { href: r.download_url, target: '_blank', rel: 'noreferrer', class: 'mono' }, r.download_url));
+      target.push(el('a', { href: r.download_url, target: '_blank', rel: 'noreferrer', class: 'mono trunc', title: r.download_url }, r.download_url));
     }
     if (browser && !r.file) {
-      target.push(el('div', { class: 'muted' },
+      target.push(el('div', { class: 'sub' },
         `${fmtTime(r.build_timestamp)} · ${r.incremental}` + (r.size ? ' · ' + fmtSize(r.size) : '') + (r.type ? ' · ' + r.type : '')));
     }
     return el('tr', {},
-      el('td', { class: 'strong' }, r.device),
-      el('td', {}, el('span', { class: 'tag' }, r.channel)),
-      el('td', { class: 'mono strong' }, r.version),
+      el('td', { class: 'nowrap' },
+        el('div', { class: 'strong' }, r.device),
+        el('div', { class: 'sub' }, el('span', { class: 'tag' }, r.channel))),
+      el('td', { class: 'mono strong nowrap' }, r.version),
       el('td', {}, el('span', { class: 'tag ' + (browser ? 'browser' : 'app') }, browser ? '浏览器' : '应用内')),
       el('td', {}, target),
-      el('td', { class: 'changelog' }, r.changelog || el('span', { class: 'muted' }, '—')),
+      el('td', {}, r.changelog
+        ? el('div', { class: 'clamp', title: r.changelog }, r.changelog)
+        : el('span', { class: 'muted' }, '—')),
       el('td', { class: 'actions' },
         el('button', { class: 'small', onclick: () => openPublish({ release: r }) }, '编辑'), ' ',
         el('button', { class: 'small danger', onclick: () => unpublish(r) }, '下架')));
-  }) : [el('tr', {}, el('td', { colspan: 7, class: 'empty' }, '尚未发布任何版本'))]));
+  }) : [el('tr', {}, el('td', { colspan: 6, class: 'empty' }, '尚未发布任何版本'))]));
 }
 
 function renderPackages() {
@@ -505,16 +530,19 @@ function renderPackages() {
     const used = p.used_by.length > 0;
     const name = used
       // Only packages referenced by a release are publicly served.
-      ? el('a', { href: packageURL(p.file), class: 'mono', download: p.file }, p.file)
-      : el('span', { class: 'mono' }, p.file);
+      ? el('a', { href: packageURL(p.file), class: 'mono trunc', title: p.file, download: p.file }, p.file)
+      : el('span', { class: 'mono trunc', title: p.file }, p.file);
     return el('tr', {},
-      el('td', {}, name, p.error && el('div', { class: 'tag err' }, p.error)),
-      el('td', { title: p.size + ' 字节' }, fmtSize(p.size)),
-      el('td', {}, p.type || '—'),
+      el('td', {}, name,
+        el('div', { class: 'sub' },
+          el('span', { title: p.size + ' 字节' }, fmtSize(p.size)),
+          p.type && el('span', { class: 'tag' }, p.type),
+          p.error && el('span', { class: 'tag err' }, p.error))),
       el('td', {}, (p.devices || []).map(d => el('span', { class: 'tag' }, d))),
-      el('td', {}, fmtTime(p.build_timestamp)),
-      el('td', { class: 'mono' }, p.incremental || '—'),
-      el('td', { class: 'mono', title: p.sha256 || '' },
+      el('td', { class: 'nowrap' },
+        fmtTime(p.build_timestamp),
+        el('div', { class: 'sub mono' }, p.incremental || '—')),
+      el('td', { class: 'mono nowrap', title: p.sha256 || '' },
         p.sha256 ? p.sha256.slice(0, 12) + '…' : el('span', { class: 'muted' }, '未计算')),
       el('td', {}, used ? p.used_by.map(u => el('span', { class: 'tag' }, u)) : el('span', { class: 'muted' }, '—')),
       el('td', { class: 'actions' },
@@ -523,7 +551,7 @@ function renderPackages() {
           class: 'small danger', disabled: used, onclick: () => deletePackage(p),
           title: used ? '先下架引用它的版本' : null,
         }, '删除')));
-  }) : [el('tr', {}, el('td', { colspan: 9, class: 'empty' }, '还没有上传任何包'))]));
+  }) : [el('tr', {}, el('td', { colspan: 6, class: 'empty' }, '还没有上传任何包'))]));
 }
 
 async function unpublish(r) {
