@@ -151,11 +151,35 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 input:read-only:not([type=file]) { color: var(--muted); background: var(--surface-3); }
-input[type=file] { padding: 4px 6px; cursor: pointer; border-style: dashed; }
-input[type=file]::file-selector-button {
-  font: inherit; font-weight: 500; margin-right: 10px; padding: 4px 12px; border-radius: 6px; cursor: pointer;
-  border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg);
-}
+.credential-user { font-size: 12px; color: var(--muted); }
+.credential-user input { height: 30px; font-family: var(--mono); }
+.control-source { display: none !important; }
+.dropdown { position: relative; min-width: 0; }
+.dropdown-trigger, .date-trigger { width: 100%; min-height: 38px; justify-content: space-between; text-align: left; background: var(--surface-2); }
+.dropdown-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dropdown-trigger::after { content: "⌄"; color: var(--muted); flex: none; }
+.dropdown-list { position: absolute; z-index: 8; top: calc(100% + 5px); left: 0; right: 0; max-height: 240px; overflow-y: auto; padding: 5px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-lg); }
+.dropdown-option { padding: 8px 10px; border-radius: 6px; cursor: pointer; overflow-wrap: anywhere; font-weight: 400; }
+.dropdown-option[aria-selected=true] { color: var(--accent-strong); }
+.dropdown-option.active { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); }
+.dropdown-option[aria-disabled=true] { opacity: .45; cursor: not-allowed; }
+.file-control { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.file-control button { flex: none; min-height: 38px; }
+.file-status { min-width: 0; overflow-wrap: anywhere; font-weight: 400; font-size: 12px; color: var(--muted); }
+[aria-invalid=true] { border-color: var(--danger) !important; }
+.date-picker { padding: 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-2); display: grid; gap: 10px; min-width: 0; }
+.calendar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.calendar-header strong { font-size: 13px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.calendar-weekday { text-align: center; color: var(--muted); font-size: 11px; padding: 3px 0; }
+.calendar-day { padding: 5px 0; min-width: 0; border-color: transparent; background: transparent; }
+.calendar-day[aria-selected=true] { background: var(--accent); color: var(--accent-fg); }
+.calendar-day.today { border-color: var(--accent); }
+.date-picker .row { justify-content: flex-end; }
+.date-picker label { min-width: 0; }
+.date-picker .banner { font-size: 12px; }
+.date-picker { grid-column: 1 / -1; }
+.calendar-row { display: contents; }
 textarea { min-height: 110px; resize: vertical; line-height: 1.5; }
 label { display: grid; gap: 6px; font-size: 13px; font-weight: 500; }
 .hint { font-size: 12px; font-weight: 400; color: var(--muted); }
@@ -189,19 +213,10 @@ label { display: grid; gap: 6px; font-size: 13px; font-weight: 500; }
 #upload-form > .hint { display: block; margin-top: 8px; }
 #upload-progress { margin-top: 16px; display: grid; gap: 6px; }
 #upload-status { font-size: 12px; font-family: var(--mono); }
-progress {
-  -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border: none; border-radius: 999px;
-  overflow: hidden; background: var(--surface-3);
-}
-progress::-webkit-progress-bar { background: var(--surface-3); border-radius: 999px; }
-progress::-webkit-progress-value { background: linear-gradient(90deg, var(--accent), var(--info)); border-radius: 999px; transition: width .2s; }
-progress::-moz-progress-bar { background: linear-gradient(90deg, var(--accent), var(--info)); border-radius: 999px; }
-progress:indeterminate {
-  background: repeating-linear-gradient(-45deg, var(--surface-3) 0 10px, color-mix(in srgb, var(--accent) 35%, var(--surface-3)) 10px 20px) 0 0 / 200% 100%;
-  animation: stripes 1s linear infinite;
-}
-progress:indeterminate::-webkit-progress-bar { background: transparent; }
-progress:indeterminate::-moz-progress-bar { background: transparent; }
+.progress-track { width: 100%; height: 8px; border-radius: 999px; overflow: hidden; background: var(--surface-3); }
+.progress-fill { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--info)); transition: width .2s; }
+.progress-track.indeterminate { background: repeating-linear-gradient(-45deg, var(--surface-3) 0 10px, color-mix(in srgb, var(--accent) 35%, var(--surface-3)) 10px 20px) 0 0 / 200% 100%; animation: stripes 1s linear infinite; }
+.progress-track.indeterminate .progress-fill { visibility: hidden; }
 @keyframes stripes { to { background-position: 28px 0; } }
 
 /* Login */
@@ -228,6 +243,10 @@ dialog h2 { margin: 0 0 18px; font-size: 17px; display: flex; align-items: cente
 dialog h2::before { content: ""; width: 4px; height: 18px; border-radius: 2px; background: var(--accent); }
 dialog form { display: grid; gap: 14px; }
 dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6px -26px -24px; padding: 14px 26px; border-top: 1px solid var(--border); background: var(--surface-2); border-radius: 0 0 18px 18px; }
+#confirm-dialog { width: min(440px, 94vw); }
+#confirm-message { white-space: pre-wrap; overflow-wrap: anywhere; margin-bottom: 22px; }
+dialog { max-height: 92vh; overflow-y: auto; }
+label, .grid > *, .upload-row > * { min-width: 0; }
 
 /* Toast */
 #toast { position: fixed; right: 24px; bottom: 24px; display: grid; gap: 10px; z-index: 10; }
@@ -248,6 +267,14 @@ dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6p
   .cols-2, .cols-3, .cols-1-2, .upload-row { grid-template-columns: minmax(0, 1fr); }
   th:last-child, td.actions { position: static; box-shadow: none; }
   #loaded-at { display: none; }
+  #login { margin: 8vh 16px 0; max-width: none; padding: 24px; }
+  dialog { padding: 18px; }
+  dialog .footer { margin: 6px -18px -18px; padding: 14px 18px; }
+  #base-url { overflow-wrap: anywhere; min-width: 0; }
+  #toast { left: 16px; right: 16px; bottom: 16px; }
+  #toast div { max-width: 100%; }
+  section.card > h2 { flex-wrap: wrap; }
+  section.card > h2 .desc { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 [hidden] { display: none !important; }
@@ -273,13 +300,16 @@ dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6p
   <span class="logo"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
   <h2>登录管理后台</h2>
   <p class="lead">使用服务端配置的管理令牌访问 OTA 发布控制台。</p>
-  <form id="login-form">
-    <label>管理令牌
-      <input id="token" type="password" autocomplete="current-password" required placeholder="OTA_ADMIN_TOKEN">
-      <span class="hint">令牌只保存在当前标签页（sessionStorage），关闭标签页即失效。</span>
+  <form id="login-form" action="/admin/state" method="post" autocomplete="on" novalidate>
+    <label class="credential-user">管理员账号
+      <input id="username" name="username" type="text" autocomplete="username" value="admin" readonly>
     </label>
-    <div id="login-error" class="banner error" hidden></div>
-    <button class="primary" type="submit">登录</button>
+    <label>管理令牌
+      <input id="token" name="password" type="password" autocomplete="current-password" required placeholder="OTA_ADMIN_TOKEN" aria-describedby="token-hint login-error">
+      <span class="hint" id="token-hint">登录会话只保存在当前标签页；浏览器支持时可选择将密钥保存在密码管理器。</span>
+    </label>
+    <div id="login-error" class="banner error" role="alert" hidden></div>
+    <button id="login-submit" class="primary" type="submit">登录</button>
   </form>
 </section>
 
@@ -303,10 +333,11 @@ dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6p
   <section class="card">
     <h2><span class="h-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M20 15v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4"/></svg></span>上传 OTA 包
       <span class="desc">上传完成后自动打开发布窗口</span></h2>
-    <form id="upload-form">
+    <form id="upload-form" novalidate>
       <div class="upload-row">
         <label>文件（*.zip）
-          <input id="upload-file" type="file" accept=".zip,application/zip" required>
+          <input id="upload-file" class="control-source" type="file" accept=".zip,application/zip" required tabindex="-1">
+          <span class="file-control"><button id="upload-choose" type="button" aria-describedby="upload-file-status">选择 ZIP 文件</button><span id="upload-file-status" class="file-status" role="status">未选择文件</span></span>
         </label>
         <label>SHA-256（可选）
           <input id="upload-sha" class="mono" pattern="[0-9a-fA-F]{64}" placeholder="填写后服务端校验">
@@ -317,10 +348,11 @@ dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6p
         </div>
       </div>
       <span class="hint">SHA-256 填 <code>sha256sum 文件名</code> 的输出；留空则不校验。</span>
+      <div id="upload-error" class="banner error" role="alert" hidden></div>
     </form>
     <div id="upload-progress" hidden>
-      <progress id="upload-bar" max="1" value="0"></progress>
-      <div id="upload-status" class="muted"></div>
+      <div id="upload-bar" class="progress-track" role="progressbar" aria-label="OTA 包上传进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill"></div></div>
+      <div id="upload-status" class="muted" role="status"></div>
     </div>
   </section>
 
@@ -338,9 +370,9 @@ dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6p
   </section>
 </main>
 
-<dialog id="publish-dialog">
+<dialog id="publish-dialog" aria-labelledby="publish-title">
   <h2 id="publish-title">发布</h2>
-  <form id="publish-form">
+  <form id="publish-form" novalidate>
     <div class="grid cols-3">
       <label>设备 *<input name="device" required placeholder="diting"></label>
       <label>通道 *<input name="channel" required placeholder="release"></label>
@@ -348,13 +380,13 @@ dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6p
     </div>
     <div class="grid cols-1-2">
       <label>分发方式
-        <select name="delivery">
+        <select name="delivery" class="control-source" tabindex="-1" data-label="分发方式">
           <option value="app">应用内下载安装</option>
           <option value="browser">浏览器打开链接</option>
         </select>
       </label>
       <label>OTA 包
-        <select name="file"></select>
+        <select name="file" class="control-source" tabindex="-1" data-label="OTA 包"></select>
       </label>
     </div>
     <span class="hint" id="file-hint"></span>
@@ -365,11 +397,22 @@ dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6p
       </label>
     </div>
     <div id="external-fields" class="grid cols-2" hidden>
-      <label>构建时间 *<input name="build_time" type="datetime-local" step="1"></label>
+      <label>构建时间 *
+        <input name="build_time" type="hidden">
+        <button id="build-time-trigger" class="date-trigger" type="button" aria-expanded="false" aria-controls="build-time-picker">选择日期与时间</button>
+      </label>
+      <div id="build-time-picker" class="date-picker" role="group" aria-label="构建日期与时间" hidden>
+        <div class="calendar-header"><button id="calendar-prev" type="button" aria-label="上个月">‹</button><strong id="calendar-month" aria-live="polite"></strong><button id="calendar-next" type="button" aria-label="下个月">›</button></div>
+        <div class="calendar-grid" aria-hidden="true"><span class="calendar-weekday">日</span><span class="calendar-weekday">一</span><span class="calendar-weekday">二</span><span class="calendar-weekday">三</span><span class="calendar-weekday">四</span><span class="calendar-weekday">五</span><span class="calendar-weekday">六</span></div>
+        <div id="calendar-days" class="calendar-grid" role="grid" aria-label="选择日期"></div>
+        <label>本地时间（时:分:秒）<input id="calendar-time" type="text" inputmode="numeric" placeholder="HH:mm:ss" maxlength="8" aria-describedby="calendar-error"></label>
+        <div id="calendar-error" class="banner error" role="alert" hidden></div>
+        <div class="row"><button id="calendar-clear" type="button">清空</button><button id="calendar-cancel" type="button">取消</button><button id="calendar-apply" type="button" class="primary">确定</button></div>
+      </div>
       <label>Incremental *<input name="incremental"></label>
-      <label>大小（字节）<input name="size" type="number" min="0" step="1"></label>
+      <label>大小（字节）<input name="size" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="非负整数"></label>
       <label>类型
-        <select name="type">
+        <select name="type" class="control-source" tabindex="-1" data-label="类型">
           <option value="">未指定</option>
           <option value="full">full</option>
           <option value="incremental">incremental</option>
@@ -378,12 +421,18 @@ dialog .footer { display: flex; justify-content: flex-end; gap: 10px; margin: 6p
     </div>
     <label>更新说明<textarea name="changelog"></textarea></label>
     <div id="publish-warn" class="banner warn" hidden></div>
-    <div id="publish-error" class="banner error" hidden></div>
+    <div id="publish-error" class="banner error" role="alert" hidden></div>
     <div class="footer">
       <button type="button" id="publish-close">取消</button>
       <button type="submit" class="primary" id="publish-submit">发布</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+  <h2 id="confirm-title"></h2>
+  <p id="confirm-message"></p>
+  <div class="footer"><button id="confirm-cancel" type="button" autofocus>取消</button><button id="confirm-accept" type="button" class="danger">确认</button></div>
 </dialog>
 
 <div id="toast"></div>
@@ -411,6 +460,330 @@ function el(tag, props, ...children) {
   }
   return n;
 }
+
+// Hidden selects keep the form's data model; only the themed combobox is interactive.
+const dropdowns = new Map();
+let openDropdown = null;
+function makeDropdown(select) {
+  const id = 'dropdown-' + select.name;
+  const text = el('span');
+  const button = el('button', { type: 'button', class: 'dropdown-trigger', role: 'combobox', 'aria-label': select.dataset.label, 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-controls': id }, text);
+  const list = el('div', { id, class: 'dropdown-list', role: 'listbox', 'aria-label': select.dataset.label, hidden: true });
+  const wrap = el('div', { class: 'dropdown' }, button, list);
+  select.after(wrap);
+  let active = -1, search = '', searchedAt = 0;
+  const enabled = () => [...select.options].map((o, i) => o.disabled ? -1 : i).filter(i => i >= 0);
+  const highlight = index => {
+    active = index;
+    [...list.children].forEach((n, i) => n.classList.toggle('active', i === index));
+    if (index >= 0 && !list.hidden) {
+      button.setAttribute('aria-activedescendant', id + '-' + index);
+      list.children[index]?.scrollIntoView({ block: 'nearest' });
+    } else button.removeAttribute('aria-activedescendant');
+  };
+  const close = (restore = false) => {
+    list.hidden = true;
+    button.setAttribute('aria-expanded', 'false');
+    button.removeAttribute('aria-activedescendant');
+    if (openDropdown === control) openDropdown = null;
+    if (restore && !button.disabled) button.focus();
+  };
+  const choose = index => {
+    if (!select.options[index] || select.options[index].disabled) return;
+    select.selectedIndex = index;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    sync();
+    close(true);
+  };
+  const sync = () => {
+    text.textContent = select.selectedOptions[0]?.textContent || '暂无可选项';
+    button.disabled = select.disabled || !enabled().length;
+    button.setAttribute('aria-required', String(select.required));
+    list.replaceChildren(...[...select.options].map((o, index) => el('div', {
+      id: id + '-' + index, class: 'dropdown-option', role: 'option',
+      'aria-selected': String(index === select.selectedIndex), 'aria-disabled': String(o.disabled),
+      onpointerdown: e => e.preventDefault(), onclick: () => choose(index),
+    }, o.textContent)));
+    if (button.disabled) close();
+    highlight(enabled().includes(active) ? active : enabled().includes(select.selectedIndex) ? select.selectedIndex : enabled()[0] ?? -1);
+  };
+  const open = () => {
+    if (button.disabled) return;
+    openDropdown?.close();
+    closeDatePicker();
+    sync();
+    list.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
+    openDropdown = control;
+    highlight(enabled().includes(select.selectedIndex) ? select.selectedIndex : enabled()[0] ?? -1);
+  };
+  const control = { button, sync, close };
+  button.addEventListener('click', () => list.hidden ? open() : close());
+  button.addEventListener('keydown', e => {
+    if (e.key === 'Tab') { close(); return; }
+    if (e.key === 'Escape') { if (!list.hidden) { e.preventDefault(); e.stopPropagation(); close(true); } return; }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      list.hidden ? open() : choose(active);
+      return;
+    }
+    if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
+      e.preventDefault();
+      const wasClosed = list.hidden;
+      if (wasClosed) open();
+      const options = enabled(), index = options.indexOf(active);
+      if (e.key === 'Home') highlight(options[0] ?? -1);
+      else if (e.key === 'End') highlight(options.at(-1) ?? -1);
+      else if (!wasClosed) highlight(options[Math.max(0, Math.min(options.length - 1, index + (e.key === 'ArrowDown' ? 1 : -1)))] ?? -1);
+      return;
+    }
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      if (list.hidden) open();
+      const now = performance.now();
+      search = now - searchedAt > 700 ? e.key : search + e.key;
+      searchedAt = now;
+      const options = enabled(), start = options.indexOf(active);
+      const ordered = [...options.slice(start + 1), ...options.slice(0, start + 1)];
+      let match = ordered.find(i => select.options[i].textContent.trim().toLocaleLowerCase().startsWith(search.toLocaleLowerCase()));
+      if (match === undefined && [...search].every(c => c === e.key)) {
+        search = e.key;
+        match = ordered.find(i => select.options[i].textContent.trim().toLocaleLowerCase().startsWith(search.toLocaleLowerCase()));
+      }
+      if (match !== undefined) highlight(match);
+    }
+  });
+  wrap.addEventListener('focusout', e => { if (!wrap.contains(e.relatedTarget)) close(); });
+  document.addEventListener('pointerdown', e => { if (!wrap.contains(e.target)) close(); });
+  select.addEventListener('change', sync);
+  new MutationObserver(sync).observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'selected', 'label'] });
+  dropdowns.set(select, control);
+  sync();
+}
+
+let finishConfirmation = null;
+function confirmAction(title, message, accept) {
+  if (finishConfirmation) return Promise.resolve(false);
+  const dialog = $('confirm-dialog'), previous = document.activeElement;
+  $('confirm-title').textContent = title;
+  $('confirm-message').textContent = message;
+  $('confirm-accept').textContent = accept;
+  return new Promise(resolve => {
+    finishConfirmation = result => {
+      finishConfirmation = null;
+      if (previous?.isConnected && !previous.disabled) previous.focus();
+      resolve(result);
+    };
+    dialog.returnValue = 'cancel';
+    dialog.showModal();
+    $('confirm-cancel').focus();
+  });
+}
+$('confirm-cancel').addEventListener('click', () => $('confirm-dialog').close('cancel'));
+$('confirm-accept').addEventListener('click', () => $('confirm-dialog').close('confirm'));
+$('confirm-dialog').addEventListener('cancel', e => { e.preventDefault(); $('confirm-dialog').close('cancel'); });
+$('confirm-dialog').addEventListener('close', () => finishConfirmation?.($('confirm-dialog').returnValue === 'confirm'));
+
+function validationTarget(field) {
+  if (field.id === 'upload-file') return $('upload-choose');
+  if (field.name === 'build_time') return $('build-time-trigger');
+  return dropdowns.get(field)?.button || field;
+}
+function clearFieldValidation(field) {
+  const target = validationTarget(field);
+  const banner = target.dataset.validationBanner;
+  if (banner) {
+    if ($(banner).textContent === target.dataset.validationMessage) showBanner(banner, '');
+    const descriptions = (target.getAttribute('aria-describedby') || '').split(/\s+/).filter(id => id && id !== banner);
+    if (descriptions.length) target.setAttribute('aria-describedby', descriptions.join(' '));
+    else target.removeAttribute('aria-describedby');
+    delete target.dataset.validationBanner;
+    delete target.dataset.validationMessage;
+  }
+  target.removeAttribute('aria-invalid');
+}
+function clearValidation(form) {
+  form.querySelectorAll('[aria-invalid], [data-validation-banner]').forEach(clearFieldValidation);
+}
+function invalidField(field, banner, message) {
+  const target = validationTarget(field);
+  target.setAttribute('aria-invalid', 'true');
+  const descriptions = new Set((target.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+  descriptions.add(banner);
+  target.setAttribute('aria-describedby', [...descriptions].join(' '));
+  target.dataset.validationBanner = banner;
+  target.dataset.validationMessage = message;
+  showBanner(banner, message);
+  if (!target.disabled) target.focus();
+  else if (field.name === 'file') dropdowns.get($('publish-form').delivery)?.button.focus();
+  return false;
+}
+function validateForm(form, banner) {
+  clearValidation(form);
+  showBanner(banner, '');
+  for (const field of form.elements) {
+    if (!['INPUT', 'TEXTAREA', 'SELECT'].includes(field.tagName) || field.disabled || field.type === 'hidden') continue;
+    const label = field.dataset.label || field.closest('label')?.firstChild.textContent.trim() || '此项';
+    if (field.required && (field.type === 'file' ? !field.files.length : !(field.type === 'password' ? field.value : field.value.trim()))) {
+      return invalidField(field, banner, '请填写或选择' + label.replace(/\s*\*$/, '') + '。');
+    }
+    if (!field.validity.valid) {
+      const message = field.validity.typeMismatch ? label + '格式无效。' : field.validity.patternMismatch ? label + '格式不符合要求。' : label + '的值无效。';
+      return invalidField(field, banner, message);
+    }
+    if (field.tagName === 'SELECT' && field.value && field.selectedOptions[0]?.disabled) return invalidField(field, banner, label + '选项不可用。');
+  }
+  return true;
+}
+for (const id of ['login-form', 'upload-form', 'publish-form']) {
+  const form = $(id);
+  for (const event of ['input', 'change']) form.addEventListener(event, e => clearFieldValidation(e.target));
+  form.addEventListener('reset', () => { clearValidation(form); });
+}
+
+function syncFileChooser() {
+  const input = $('upload-file'), file = input.files[0];
+  $('upload-choose').disabled = input.disabled;
+  $('upload-file-status').textContent = file ? file.name + ' · ' + fmtSize(file.size) : '未选择文件';
+}
+function uploadProgress(value, text) {
+  const bar = $('upload-bar');
+  const indeterminate = value === null;
+  bar.classList.toggle('indeterminate', indeterminate);
+  if (indeterminate) bar.removeAttribute('aria-valuenow');
+  else {
+    const percent = Math.max(0, Math.min(100, value * 100));
+    bar.setAttribute('aria-valuenow', String(Math.round(percent)));
+    bar.firstElementChild.style.width = percent + '%';
+  }
+  bar.setAttribute('aria-valuetext', text);
+}
+
+// Parse local wall time explicitly, rejecting calendar rollover and DST gaps.
+function parseLocalTime(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const parts = match.slice(1).map(Number), [year, month, day, hour, minute, second] = parts;
+  if (year < 1 || month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 59) return null;
+  const date = new Date(0);
+  date.setFullYear(year, month - 1, day);
+  date.setHours(hour, minute, second, 0);
+  const actual = [date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds()];
+  return parts.every((n, i) => n === actual[i]) ? date : null;
+}
+function calendarDate(year, month, day) {
+  const date = new Date(0);
+  date.setHours(12, 0, 0, 0);
+  date.setFullYear(year, month, day);
+  return date;
+}
+let selectedDate = null, calendarFocus = null;
+function syncBuildTime() {
+  const date = parseLocalTime($('publish-form').build_time.value);
+  $('build-time-trigger').textContent = date ? toLocalInput(date.getTime() / 1000).replace('T', ' ') : '选择日期与时间';
+}
+function closeDatePicker(restore = false) {
+  $('build-time-picker').hidden = true;
+  $('build-time-trigger').setAttribute('aria-expanded', 'false');
+  if (restore && !$('external-fields').hidden) $('build-time-trigger').focus();
+}
+function renderCalendar(focus = false) {
+  const year = calendarFocus.getFullYear(), month = calendarFocus.getMonth();
+  $('calendar-month').textContent = `${year} 年 ${month + 1} 月`;
+  $('calendar-prev').disabled = year === 1 && month === 0;
+  $('calendar-next').disabled = year === 9999 && month === 11;
+  const first = calendarDate(year, month, 1).getDay();
+  const count = calendarDate(year, month + 1, 0).getDate();
+  const today = new Date(), rows = [];
+  for (let start = 0; start < first + count; start += 7) {
+    const row = el('div', { class: 'calendar-row', role: 'row' });
+    for (let column = 0; column < 7; column++) {
+      const day = start + column - first + 1;
+      if (day < 1 || day > count) { row.append(el('span', { role: 'gridcell', 'aria-disabled': 'true' })); continue; }
+      const date = calendarDate(year, month, day);
+      const selected = selectedDate && date.getTime() === selectedDate.getTime();
+      const button = el('button', {
+        type: 'button', class: 'calendar-day' + (today.getFullYear() === year && today.getMonth() === month && today.getDate() === day ? ' today' : ''),
+        role: 'gridcell', 'aria-label': `${year} 年 ${month + 1} 月 ${day} 日`, 'aria-selected': String(!!selected),
+        tabindex: day === calendarFocus.getDate() ? '0' : '-1', 'data-day': day,
+        onclick: () => { selectedDate = date; calendarFocus = date; renderCalendar(true); },
+        onkeydown: e => calendarKeydown(e, date),
+      }, day);
+      row.append(button);
+    }
+    rows.push(row);
+  }
+  $('calendar-days').replaceChildren(...rows);
+  if (focus) $('calendar-days').querySelector('[tabindex="0"]')?.focus();
+}
+function shiftCalendarMonth(delta, focus = false) {
+  const date = calendarDate(calendarFocus.getFullYear(), calendarFocus.getMonth() + delta, 1);
+  if (date.getFullYear() < 1 || date.getFullYear() > 9999) return;
+  const lastDay = calendarDate(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  date.setDate(Math.min(calendarFocus.getDate(), lastDay));
+  calendarFocus = date;
+  renderCalendar(focus);
+}
+function calendarKeydown(e, date) {
+  if (e.key === 'PageUp' || e.key === 'PageDown') {
+    e.preventDefault();
+    shiftCalendarMonth((e.key === 'PageUp' ? -1 : 1) * (e.shiftKey ? 12 : 1), true);
+    return;
+  }
+  const offsets = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7, Home: -date.getDay(), End: 6 - date.getDay() };
+  if (!(e.key in offsets)) return;
+  e.preventDefault();
+  const next = calendarDate(date.getFullYear(), date.getMonth(), date.getDate() + offsets[e.key]);
+  if (next.getFullYear() < 1 || next.getFullYear() > 9999) return;
+  calendarFocus = next;
+  renderCalendar(true);
+}
+function openDatePicker() {
+  openDropdown?.close();
+  const current = parseLocalTime($('publish-form').build_time.value) || new Date();
+  selectedDate = calendarDate(current.getFullYear(), current.getMonth(), current.getDate());
+  calendarFocus = new Date(selectedDate);
+  $('calendar-time').value = toLocalInput(current.getTime() / 1000).split('T')[1];
+  $('calendar-time').removeAttribute('aria-invalid');
+  showBanner('calendar-error', '');
+  $('build-time-picker').hidden = false;
+  $('build-time-trigger').setAttribute('aria-expanded', 'true');
+  renderCalendar(true);
+}
+$('build-time-trigger').addEventListener('click', () => $('build-time-picker').hidden ? openDatePicker() : closeDatePicker(true));
+$('calendar-prev').addEventListener('click', () => shiftCalendarMonth(-1));
+$('calendar-next').addEventListener('click', () => shiftCalendarMonth(1));
+$('calendar-cancel').addEventListener('click', () => closeDatePicker(true));
+$('calendar-clear').addEventListener('click', () => {
+  $('publish-form').build_time.value = '';
+  syncBuildTime();
+  closeDatePicker(true);
+});
+$('calendar-apply').addEventListener('click', () => {
+  const time = $('calendar-time').value.trim();
+  const pad = n => String(n).padStart(2, '0');
+  const datePart = `${String(selectedDate.getFullYear()).padStart(4, '0')}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`;
+  const value = datePart + 'T' + (/^\d{2}:\d{2}$/.test(time) ? time + ':00' : time);
+  const date = parseLocalTime(value);
+  if (!date || date.getTime() <= 0) {
+    invalidField($('calendar-time'), 'calendar-error', '请输入有效的本地时间 HH:mm:ss（时间须晚于 Unix 纪元；夏令时跳过的时间不可用）。');
+    return;
+  }
+  const field = $('publish-form').build_time;
+  field.value = value;
+  field.dispatchEvent(new Event('change', { bubbles: true }));
+  syncBuildTime();
+  closeDatePicker(true);
+});
+for (const node of [$('build-time-trigger'), $('build-time-picker')]) {
+  node.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('build-time-picker').hidden) { e.preventDefault(); e.stopPropagation(); closeDatePicker(true); }
+  });
+}
+$('calendar-time').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('calendar-apply').click(); } });
+document.addEventListener('pointerdown', e => {
+  if (!$('build-time-picker').hidden && !$('build-time-picker').contains(e.target) && !$('build-time-trigger').contains(e.target)) closeDatePicker();
+});
 
 function fmtSize(n) {
   if (!n) return '—';
@@ -457,6 +830,12 @@ async function api(method, path, body) {
 
 function logout(reason) {
   sessionStorage.removeItem(TOKEN_KEY);
+  $('token').value = '';
+  clearValidation($('login-form'));
+  openDropdown?.close();
+  closeDatePicker();
+  if ($('confirm-dialog').open) $('confirm-dialog').close('cancel');
+  if ($('publish-dialog').open) $('publish-dialog').close();
   state = null;
   $('app').hidden = $('refresh').hidden = $('logout').hidden = true;
   $('login').hidden = false;
@@ -465,9 +844,9 @@ function logout(reason) {
   $('token').focus();
 }
 
-async function load() {
+async function load(authenticatedState) {
   try {
-    state = await api('GET', '/admin/state');
+    state = authenticatedState || await api('GET', '/admin/state');
   } catch (e) {
     if (e instanceof AuthError) return false;
     showBanner(state ? 'state-error' : 'login-error', '加载失败：' + e.message);
@@ -555,7 +934,7 @@ function renderPackages() {
 }
 
 async function unpublish(r) {
-  if (!confirm(`下架 ${r.device}/${r.channel}（${r.version}）？\n客户端将查询不到该通道的更新，包文件保留。`)) return;
+  if (!await confirmAction('下架发布版本', `下架 ${r.device}/${r.channel}（${r.version}）？\n客户端将查询不到该通道的更新，包文件保留。`, '确认下架')) return;
   try {
     await api('DELETE', `/admin/releases/${encodeURIComponent(r.device)}/${encodeURIComponent(r.channel)}`);
     toast(`已下架 ${r.device}/${r.channel}`, 'ok');
@@ -566,7 +945,7 @@ async function unpublish(r) {
 }
 
 async function deletePackage(p) {
-  if (!confirm(`永久删除 ${p.file}？此操作不可撤销。`)) return;
+  if (!await confirmAction('永久删除 OTA 包', `永久删除 ${p.file}？\n此操作不可撤销。`, '永久删除')) return;
   try {
     await api('DELETE', '/admin/files/' + encodeURIComponent(p.file));
     toast('已删除 ' + p.file, 'ok');
@@ -588,27 +967,33 @@ function upload(file, sha) {
   xhr.setRequestHeader('Authorization', 'Bearer ' + sessionStorage.getItem(TOKEN_KEY));
   xhr.setRequestHeader('Content-Type', 'application/zip');
 
-  const bar = $('upload-bar'), status = $('upload-status');
+  const status = $('upload-status');
   const started = performance.now();
-  bar.removeAttribute('value');
+  uploadProgress(null, '连接中');
   status.textContent = '连接中…';
   $('upload-progress').hidden = false;
   $('upload-start').disabled = $('upload-file').disabled = $('upload-sha').disabled = true;
+  syncFileChooser();
   $('upload-cancel').hidden = false;
 
   xhr.upload.onprogress = e => {
     if (!e.lengthComputable) return;
-    bar.value = e.loaded / e.total;
+    const fraction = e.loaded / e.total;
     const rate = e.loaded / ((performance.now() - started) / 1000);
     status.textContent = e.loaded < e.total
       ? `${fmtSize(e.loaded)} / ${fmtSize(e.total)} · ${fmtSize(rate)}/s`
       : '上传完成，服务端校验中…';
+    uploadProgress(e.loaded < e.total ? fraction : null, status.textContent);
   };
   const done = msg => {
     uploadXHR = null;
     $('upload-start').disabled = $('upload-file').disabled = $('upload-sha').disabled = false;
+    syncFileChooser();
     $('upload-cancel').hidden = true;
     status.textContent = msg;
+    const value = $('upload-bar').getAttribute('aria-valuenow');
+    uploadProgress(value === null ? 0 : Number(value) / 100, msg);
+    if (msg.startsWith('上传失败') || msg.startsWith('上传中断')) showBanner('upload-error', msg);
   };
   xhr.onload = () => {
     if (xhr.status === 401) {
@@ -622,7 +1007,7 @@ function upload(file, sha) {
       return;
     }
     const p = JSON.parse(xhr.responseText);
-    bar.value = 1;
+    uploadProgress(1, '上传完成');
     done(`已上传 ${p.file}：${p.type}，设备 ${p.devices.join(', ')}，${p.incremental}`);
     toast('已上传 ' + p.file, 'ok');
     $('upload-form').reset();
@@ -637,7 +1022,7 @@ function toLocalInput(unixSeconds) {
   if (!unixSeconds) return '';
   const d = new Date(unixSeconds * 1000);
   const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return `${String(d.getFullYear()).padStart(4, '0')}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 // editing holds the release being edited; its device/channel are fixed
@@ -647,6 +1032,8 @@ let editing = null;
 function openPublish({ release, file }) {
   editing = release || null;
   const f = $('publish-form');
+  openDropdown?.close();
+  closeDatePicker();
   f.reset();
   showBanner('publish-error', '');
   $('publish-title').textContent = editing ? `编辑 ${editing.device}/${editing.channel}` : '新建发布';
@@ -698,6 +1085,16 @@ function syncPublishForm() {
   f.file.required = !browser;
   f.download_url.required = external;
   f.build_time.required = f.incremental.required = external;
+  f.download_url.disabled = !browser;
+  for (const field of [f.build_time, f.incremental, f.size, f.type]) field.disabled = !external;
+  $('build-time-trigger').disabled = !external;
+  if (!external) closeDatePicker();
+  for (const field of [f.file, f.download_url, f.build_time, f.incremental, f.size, f.type]) {
+    const fileValid = field === f.file && field.validity.valid && (!field.value || !field.selectedOptions[0]?.disabled);
+    if (field.disabled || fileValid) clearFieldValidation(field);
+  }
+  dropdowns.forEach(control => control.sync());
+  syncBuildTime();
 
   const pkg = state.packages.find(p => p.file === f.file.value);
   $('file-hint').textContent = pkg
@@ -722,7 +1119,7 @@ function publishBody() {
   body.delivery = 'browser';
   if (f.download_url.value.trim()) body.download_url = f.download_url.value.trim();
   if (!body.file) {
-    body.build_timestamp = Math.floor(new Date(f.build_time.value).getTime() / 1000);
+    body.build_timestamp = Math.floor(parseLocalTime(f.build_time.value).getTime() / 1000);
     body.incremental = f.incremental.value.trim();
     if (f.size.value) body.size = Number(f.size.value);
     if (f.type.value) body.type = f.type.value;
@@ -730,14 +1127,35 @@ function publishBody() {
   return body;
 }
 
+function validatePublish() {
+  const f = $('publish-form');
+  if (!validateForm(f, 'publish-error')) return false;
+  if (f.delivery.value === 'browser' && f.download_url.value.trim()) {
+    let url;
+    try { url = new URL(f.download_url.value.trim()); } catch (_) { /* Feedback below. */ }
+    if (!url || url.protocol !== 'https:' || !url.hostname || url.username || url.password || url.hash || f.download_url.value.includes('#')) {
+      return invalidField(f.download_url, 'publish-error', '下载地址必须是绝对 HTTPS 链接，不能包含账号密码或片段（#）。');
+    }
+  }
+  if (f.delivery.value === 'browser' && !f.file.value) {
+    const date = parseLocalTime(f.build_time.value);
+    if (!date || date.getTime() <= 0) return invalidField(f.build_time, 'publish-error', '请选择有效的构建日期与本地时间（时间须晚于 Unix 纪元）。');
+    if (f.size.value && (!/^[0-9]+$/.test(f.size.value) || !Number.isSafeInteger(Number(f.size.value)))) {
+      return invalidField(f.size, 'publish-error', '大小必须是非负整数，且不能超过 9007199254740991 字节。');
+    }
+  }
+  return true;
+}
+
 async function submitPublish(e) {
   e.preventDefault();
+  if ($('publish-submit').disabled || !validatePublish()) return;
   const body = publishBody();
   const exists = state.releases.some(r => r.device === body.device && r.channel === body.channel);
-  if (!editing && exists && !confirm(`${body.device}/${body.channel} 已有发布版本，确定覆盖？`)) return;
   $('publish-submit').disabled = true;
   showBanner('publish-error', '');
   try {
+    if (!editing && exists && !await confirmAction('覆盖现有发布', `${body.device}/${body.channel} 已有发布版本。\n确定用 ${body.version} 覆盖？`, '确认覆盖')) return;
     const rel = await api('POST', '/admin/releases', body);
     $('publish-dialog').close();
     toast(`已发布 ${rel.device}/${rel.channel} → ${rel.version}`, 'ok');
@@ -750,26 +1168,67 @@ async function submitPublish(e) {
   }
 }
 
-$('login-form').addEventListener('submit', e => {
+let loginBusy = false;
+$('login-form').addEventListener('submit', async e => {
   e.preventDefault();
-  sessionStorage.setItem(TOKEN_KEY, $('token').value);
-  $('token').value = '';
+  if (loginBusy || !validateForm($('login-form'), 'login-error')) return;
+  const secret = $('token').value;
+  loginBusy = true;
+  $('login-submit').disabled = true;
+  $('token').readOnly = true;
   showBanner('login-error', '');
-  load();
+  try {
+    // Authenticate first without committing the candidate key to the session.
+    const response = await fetch('/admin/state', { headers: { Authorization: 'Bearer ' + secret }, cache: 'no-store' });
+    const text = await response.text();
+    if (!response.ok) throw new Error(text.trim() || `${response.status} ${response.statusText}`);
+    const authenticatedState = JSON.parse(text);
+    sessionStorage.setItem(TOKEN_KEY, secret);
+    let credentialHandedOff = false;
+    // This is a best-effort handoff, never a promise that a browser will show its save UI.
+    if (window.isSecureContext && window.PasswordCredential && navigator.credentials?.store) {
+      try {
+        await navigator.credentials.store(new PasswordCredential({ id: 'admin', name: 'Rom-Updater 管理员', password: secret }));
+        credentialHandedOff = true;
+      }
+      catch (_) { /* Unsupported or declined password storage must not block valid login. */ }
+    }
+    await load(authenticatedState);
+    // Keep unsupported/declined handoffs recognizable to standard password managers until logout.
+    if (credentialHandedOff) $('token').value = '';
+    $('new-release').focus();
+  } catch (err) {
+    sessionStorage.removeItem(TOKEN_KEY);
+    invalidField($('token'), 'login-error', '登录失败：' + err.message);
+  } finally {
+    loginBusy = false;
+    $('login-submit').disabled = false;
+    $('token').readOnly = false;
+  }
 });
 $('logout').addEventListener('click', () => logout(''));
-$('refresh').addEventListener('click', load);
+$('refresh').addEventListener('click', () => load());
 $('new-release').addEventListener('click', () => openPublish({}));
 $('upload-form').addEventListener('submit', e => {
   e.preventDefault();
+  if (uploadXHR || !validateForm($('upload-form'), 'upload-error')) return;
   const file = $('upload-file').files[0];
-  if (file) upload(file, $('upload-sha').value.trim());
+  if (!/\.zip$/i.test(file.name)) { invalidField($('upload-file'), 'upload-error', '请选择扩展名为 .zip 的 OTA 包。'); return; }
+  upload(file, $('upload-sha').value.trim());
 });
+$('upload-choose').addEventListener('click', () => $('upload-file').click());
+$('upload-file').addEventListener('change', syncFileChooser);
+$('upload-file').addEventListener('cancel', syncFileChooser);
+$('upload-form').addEventListener('reset', () => queueMicrotask(() => { syncFileChooser(); showBanner('upload-error', ''); }));
 $('upload-cancel').addEventListener('click', () => uploadXHR && uploadXHR.abort());
 $('publish-form').addEventListener('submit', submitPublish);
 $('publish-form').addEventListener('change', syncPublishForm);
 $('publish-form').device.addEventListener('input', syncPublishForm);
 $('publish-close').addEventListener('click', () => $('publish-dialog').close());
+$('publish-dialog').addEventListener('close', () => { openDropdown?.close(); closeDatePicker(); });
+$('publish-form').addEventListener('reset', () => queueMicrotask(() => { if (state && $('publish-form').file.options.length) syncPublishForm(); }));
+document.querySelectorAll('#publish-form select').forEach(makeDropdown);
+syncFileChooser();
 window.addEventListener('beforeunload', e => { if (uploadXHR) e.preventDefault(); });
 
 if (sessionStorage.getItem(TOKEN_KEY)) load();

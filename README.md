@@ -59,7 +59,13 @@ OTA_ADMIN_TOKEN=... ./ota-server -base-url https://ota.example.com \
 
 ## 发布新 ROM
 
-最简单的方式是打开 `https://ota.example.com/admin/`，用 `OTA_ADMIN_TOKEN` 登录后上传并发布。命令行方式：
+最简单的方式是打开 `https://ota.example.com/admin/`，用 `OTA_ADMIN_TOKEN` 登录后上传并发布。
+
+后台登录使用固定账号 `admin`，管理令牌作为密码。认证成功后，支持 Credential Management API 的浏览器会收到密码保存请求；其他浏览器通过标准用户名/密码字段识别凭据。是否显示保存提示由浏览器设置和站点保存策略决定，生产环境应使用 HTTPS。登录会话仍只保存在当前标签页的 `sessionStorage`，退出会清除；密码管理器中保存的凭据由浏览器管理。
+
+网页下拉菜单、文件选择按钮、上传进度、日期时间选择和操作确认均使用统一的自定义组件，支持键盘操作。构建时间按浏览器本地时区选择，发布时转换为 Unix 秒。系统文件选择窗口和上传期间离开页面的安全提示仍由浏览器提供。
+
+命令行方式：
 
 1. 上传包，`sha256` 可选，填写后服务端会校验：
 
