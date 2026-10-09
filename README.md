@@ -4,11 +4,22 @@ ROM OTA 更新服务端，Go 标准库实现，无第三方依赖。
 
 - `GET /ota/{device}/{channel}.json`：查询当前发布的版本
 - `GET|HEAD /ota/files/{file}`：下载 OTA 包，支持 `Range`/206、`Content-Range`、`Accept-Ranges`、`If-Range`；ETag 为包的 SHA-256
-- `PUT /admin/files/{file}.zip`、`POST /admin/releases`：上传与发布（需设置 `OTA_ADMIN_TOKEN`）
+- `GET /admin/`：网页管理后台，可上传、发布、编辑、下架、删除包（需设置 `OTA_ADMIN_TOKEN`）
+- `PUT /admin/files/{file}.zip`、`DELETE /admin/files/{file}`：上传、删除包（被发布引用的包不能删除）
+- `GET /admin/state`、`POST /admin/releases`、`DELETE /admin/releases/{device}/{channel}`：查看状态、发布、下架
 
 `build_timestamp`、`incremental`、`type` 从包内 `META-INF/com/android/metadata` 读取（`post-timestamp`、`post-build-incremental`、`pre-build`），`size`、`sha256` 由服务端计算，不需要手填。
 
 ## 运行
+
+### Docker Compose
+
+```bash
+cp .env.example .env   # 填写 OTA_BASE_URL 和 OTA_ADMIN_TOKEN
+docker compose up -d
+```
+
+`compose.yaml` 只把端口绑定在 `127.0.0.1:8080`，由本机的 HTTPS 反向代理转发；数据存放在命名卷 `ota-data`。升级：`docker compose pull && docker compose up -d`。
 
 ### Docker
 
@@ -16,7 +27,7 @@ ROM OTA 更新服务端，Go 标准库实现，无第三方依赖。
 docker run -d --name ota -p 8080:8080 \
   -v ota-data:/data \
   -e OTA_ADMIN_TOKEN=换成随机长字符串 \
-  ghcr.io/night-stars-1/rom-updater:0.1 \
+  ghcr.io/night-stars-1/rom-updater:0.2 \
   -base-url https://ota.example.com
 ```
 
@@ -47,6 +58,8 @@ OTA_ADMIN_TOKEN=... ./ota-server -base-url https://ota.example.com \
 环境变量 `OTA_ADMIN_TOKEN` 未设置时，管理接口不注册（返回 404）。
 
 ## 发布新 ROM
+
+最简单的方式是打开 `https://ota.example.com/admin/`，用 `OTA_ADMIN_TOKEN` 登录后上传并发布。命令行方式：
 
 1. 上传包，`sha256` 可选，填写后服务端会校验：
 

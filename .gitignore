@@ -3,3 +3,4 @@
 # Runtime data
 /releases.json
 /files/
+/.env

@@ -1,0 +1,15 @@
+services:
+  ota:
+    image: ghcr.io/night-stars-1/rom-updater:${OTA_IMAGE_TAG:-0.2}
+    restart: unless-stopped
+    command: ["-base-url", "${OTA_BASE_URL:?set OTA_BASE_URL in .env}"]
+    environment:
+      OTA_ADMIN_TOKEN: ${OTA_ADMIN_TOKEN:?set OTA_ADMIN_TOKEN in .env}
+    # Plain HTTP: only the local HTTPS reverse proxy should reach it.
+    ports:
+      - "127.0.0.1:${OTA_PORT:-8080}:8080"
+    volumes:
+      - ota-data:/data
+
+volumes:
+  ota-data:
