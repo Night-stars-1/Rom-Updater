@@ -167,9 +167,17 @@ input:read-only:not([type=file]) { color: var(--muted); background: var(--surfac
 .file-control button { flex: none; min-height: 38px; }
 .file-status { min-width: 0; overflow-wrap: anywhere; font-weight: 400; font-size: 12px; color: var(--muted); }
 [aria-invalid=true] { border-color: var(--danger) !important; }
-.date-picker { padding: 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-2); display: grid; gap: 10px; min-width: 0; }
-.calendar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.calendar-header strong { font-size: 13px; }
+.date-picker { position: fixed; z-index: 9; width: min(360px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; overflow-anchor: none; padding: 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-2); box-shadow: var(--shadow-lg); display: grid; grid-auto-rows: max-content; align-content: start; gap: 10px; min-width: 0; }
+.calendar-header { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; align-items: end; gap: 6px; }
+.calendar-header > button { min-height: 38px; padding: 6px 0; }
+.calendar-month-controls { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 6px; }
+.calendar-time-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.calendar-month-controls label, .calendar-time-controls label { gap: 4px; font-size: 12px; }
+.date-picker .dropdown-trigger { padding: 6px 8px; }
+.calendar-dropdown-list { position: fixed; z-index: 10; right: auto; overscroll-behavior: contain; }
+.dropdown-list.windowed { overflow-anchor: none; }
+.dropdown-list.windowed .dropdown-option { height: 36px; padding: 8px 10px; line-height: 20px; white-space: nowrap; }
+.dropdown-spacer { pointer-events: none; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
 .calendar-weekday { text-align: center; color: var(--muted); font-size: 11px; padding: 3px 0; }
 .calendar-day { padding: 5px 0; min-width: 0; border-color: transparent; background: transparent; }
@@ -178,7 +186,6 @@ input:read-only:not([type=file]) { color: var(--muted); background: var(--surfac
 .date-picker .row { justify-content: flex-end; }
 .date-picker label { min-width: 0; }
 .date-picker .banner { font-size: 12px; }
-.date-picker { grid-column: 1 / -1; }
 .calendar-row { display: contents; }
 textarea { min-height: 110px; resize: vertical; line-height: 1.5; }
 label { display: grid; gap: 6px; font-size: 13px; font-weight: 500; }
@@ -402,10 +409,21 @@ label, .grid > *, .upload-row > * { min-width: 0; }
         <button id="build-time-trigger" class="date-trigger" type="button" aria-expanded="false" aria-controls="build-time-picker">选择日期与时间</button>
       </label>
       <div id="build-time-picker" class="date-picker" role="group" aria-label="构建日期与时间" hidden>
-        <div class="calendar-header"><button id="calendar-prev" type="button" aria-label="上个月">‹</button><strong id="calendar-month" aria-live="polite"></strong><button id="calendar-next" type="button" aria-label="下个月">›</button></div>
+        <div class="calendar-header">
+          <button id="calendar-prev" type="button" aria-label="上个月">‹</button>
+          <div class="calendar-month-controls">
+            <label>年<select id="calendar-year" name="calendar_year" class="control-source" tabindex="-1" data-label="构建日期年份" data-windowed="true"></select></label>
+            <label>月<select id="calendar-month" name="calendar_month" class="control-source" tabindex="-1" data-label="构建日期月份"></select></label>
+          </div>
+          <button id="calendar-next" type="button" aria-label="下个月">›</button>
+        </div>
         <div class="calendar-grid" aria-hidden="true"><span class="calendar-weekday">日</span><span class="calendar-weekday">一</span><span class="calendar-weekday">二</span><span class="calendar-weekday">三</span><span class="calendar-weekday">四</span><span class="calendar-weekday">五</span><span class="calendar-weekday">六</span></div>
         <div id="calendar-days" class="calendar-grid" role="grid" aria-label="选择日期"></div>
-        <label>本地时间（时:分:秒）<input id="calendar-time" type="text" inputmode="numeric" placeholder="HH:mm:ss" maxlength="8" aria-describedby="calendar-error"></label>
+        <div class="calendar-time-controls" role="group" aria-label="本地时间（时:分:秒）">
+          <label>时<select id="calendar-hour" name="calendar_hour" class="control-source" tabindex="-1" data-label="本地时间小时" aria-describedby="calendar-error"></select></label>
+          <label>分<select id="calendar-minute" name="calendar_minute" class="control-source" tabindex="-1" data-label="本地时间分钟" aria-describedby="calendar-error"></select></label>
+          <label>秒<select id="calendar-second" name="calendar_second" class="control-source" tabindex="-1" data-label="本地时间秒钟" aria-describedby="calendar-error"></select></label>
+        </div>
         <div id="calendar-error" class="banner error" role="alert" hidden></div>
         <div class="row"><button id="calendar-clear" type="button">清空</button><button id="calendar-cancel" type="button">取消</button><button id="calendar-apply" type="button" class="primary">确定</button></div>
       </div>
@@ -464,29 +482,102 @@ function el(tag, props, ...children) {
 // Hidden selects keep the form's data model; only the themed combobox is interactive.
 const dropdowns = new Map();
 let openDropdown = null;
+
+// Calendar overlays remain inside the modal DOM, but never participate in its grid.
+function calendarViewport(inset = 12) {
+  const viewport = window.visualViewport;
+  const left = viewport?.offsetLeft || 0, top = viewport?.offsetTop || 0;
+  return { left: left + inset, top: top + inset, right: left + (viewport?.width || innerWidth) - inset, bottom: top + (viewport?.height || innerHeight) - inset };
+}
+function rectIntersects(rect, bounds) {
+  return rect.width > 0 && rect.height > 0 && rect.right > bounds.left && rect.left < bounds.right && rect.bottom > bounds.top && rect.top < bounds.bottom;
+}
+function positionCalendarOverlay(node, anchor, width, heightLimit) {
+  const bounds = calendarViewport(), gap = 5;
+  const set = (key, value) => { const px = Math.max(0, value) + 'px'; if (node.style[key] !== px) node.style[key] = px; };
+  set('width', Math.min(width, Math.max(0, bounds.right - bounds.left)));
+  const naturalHeight = Math.min(heightLimit, node.scrollHeight + node.offsetHeight - node.clientHeight);
+  const below = Math.max(0, bounds.bottom - anchor.bottom - gap), above = Math.max(0, anchor.top - gap - bounds.top);
+  const useBelow = naturalHeight <= below || naturalHeight > above && below >= above;
+  const height = Math.min(naturalHeight, useBelow ? below : above);
+  set('maxHeight', Math.min(heightLimit, useBelow ? below : above));
+  set('left', Math.max(bounds.left, Math.min(anchor.left, bounds.right - node.offsetWidth)));
+  set('top', Math.max(bounds.top, Math.min(useBelow ? anchor.bottom + gap : anchor.top - gap - height, bounds.bottom - height)));
+}
+
 function makeDropdown(select) {
-  const id = 'dropdown-' + select.name;
+  const id = 'dropdown-' + (select.id || select.name), windowed = select.dataset.windowed === 'true';
+  const calendar = $('build-time-picker').contains(select);
   const text = el('span');
-  const button = el('button', { type: 'button', class: 'dropdown-trigger', role: 'combobox', 'aria-label': select.dataset.label, 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-controls': id }, text);
-  const list = el('div', { id, class: 'dropdown-list', role: 'listbox', 'aria-label': select.dataset.label, hidden: true });
+  const button = el('button', { id: id + '-trigger', type: 'button', class: 'dropdown-trigger', role: 'combobox', 'aria-label': select.dataset.label, 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-controls': id, 'aria-describedby': select.getAttribute('aria-describedby') }, text);
+  const list = el('div', { id, class: 'dropdown-list' + (calendar ? ' calendar-dropdown-list' : '') + (windowed ? ' windowed' : ''), role: 'listbox', 'aria-label': select.dataset.label, hidden: true });
   const wrap = el('div', { class: 'dropdown' }, button, list);
   select.after(wrap);
-  let active = -1, search = '', searchedAt = 0;
-  const enabled = () => [...select.options].map((o, i) => o.disabled ? -1 : i).filter(i => i >= 0);
+  let active = -1, search = '', searchedAt = 0, optionsDirty = true, windowStart = -1;
+  let options = [], enabled = [], positions = new Map();
+  const rowHeight = 36, windowSize = 64;
+  const refreshRendered = () => {
+    let activeNode = null;
+    for (const node of list.querySelectorAll('[role="option"]')) {
+      const index = Number(node.dataset.index);
+      node.classList.toggle('active', index === active);
+      node.setAttribute('aria-selected', String(index === select.selectedIndex));
+      if (index === active) activeNode = node;
+    }
+    if (activeNode && !list.hidden) button.setAttribute('aria-activedescendant', activeNode.id);
+    else button.removeAttribute('aria-activedescendant');
+  };
+  const spacer = height => {
+    const node = el('div', { class: 'dropdown-spacer', 'aria-hidden': 'true' });
+    node.style.height = height + 'px';
+    return node;
+  };
+  const optionChanges = records => records.some(record => record.target !== select || record.type === 'childList');
+  const renderOptions = (force = false) => {
+    const start = windowed ? Math.max(0, Math.min(options.length - windowSize, Math.floor(list.scrollTop / rowHeight) - 16)) : 0;
+    if (force || windowed && start !== windowStart) {
+      const end = windowed ? Math.min(options.length, start + windowSize) : options.length;
+      const nodes = [];
+      if (windowed) nodes.push(spacer(start * rowHeight));
+      for (let index = start; index < end; index++) {
+        const option = options[index];
+        nodes.push(el('div', {
+          id: id + '-' + index, class: 'dropdown-option', role: 'option', 'data-index': index,
+          'aria-selected': String(index === select.selectedIndex), 'aria-disabled': String(option.disabled),
+          'aria-posinset': index + 1, 'aria-setsize': options.length,
+          onpointerdown: e => e.preventDefault(), onclick: () => choose(index),
+        }, option.text));
+      }
+      if (windowed) nodes.push(spacer((options.length - end) * rowHeight));
+      list.replaceChildren(...nodes);
+      windowStart = start;
+    }
+    refreshRendered();
+  };
   const highlight = index => {
     active = index;
-    [...list.children].forEach((n, i) => n.classList.toggle('active', i === index));
-    if (index >= 0 && !list.hidden) {
-      button.setAttribute('aria-activedescendant', id + '-' + index);
-      list.children[index]?.scrollIntoView({ block: 'nearest' });
-    } else button.removeAttribute('aria-activedescendant');
+    if (index >= 0 && !list.hidden && windowed) {
+      const top = 5 + index * rowHeight, bottom = top + rowHeight;
+      if (top < list.scrollTop) list.scrollTop = top;
+      else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+    }
+    renderOptions();
+    if (index >= 0 && !list.hidden && !windowed) {
+      const node = $(id + '-' + index);
+      if (calendar && node) {
+        const top = node.offsetTop, bottom = top + node.offsetHeight;
+        if (top < list.scrollTop) list.scrollTop = top;
+        else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+      } else node?.scrollIntoView({ block: 'nearest' });
+    }
   };
   const close = (restore = false) => {
     list.hidden = true;
     button.setAttribute('aria-expanded', 'false');
     button.removeAttribute('aria-activedescendant');
     if (openDropdown === control) openDropdown = null;
-    if (restore && !button.disabled) button.focus();
+    search = ''; searchedAt = 0;
+    if (restore && !button.disabled) button.focus({ preventScroll: calendar });
   };
   const choose = index => {
     if (!select.options[index] || select.options[index].disabled) return;
@@ -496,28 +587,40 @@ function makeDropdown(select) {
     close(true);
   };
   const sync = () => {
+    if (optionChanges(observer.takeRecords())) optionsDirty = true;
+    const rebuild = optionsDirty;
+    if (rebuild) {
+      options = Array.from(select.options, option => ({ text: option.textContent, search: option.textContent.trim().toLocaleLowerCase(), disabled: option.disabled }));
+      enabled = [];
+      positions = new Map();
+      options.forEach((option, index) => { if (!option.disabled) { positions.set(index, enabled.length); enabled.push(index); } });
+      optionsDirty = false;
+    }
     text.textContent = select.selectedOptions[0]?.textContent || '暂无可选项';
-    button.disabled = select.disabled || !enabled().length;
+    button.disabled = select.disabled || !enabled.length;
     button.setAttribute('aria-required', String(select.required));
-    list.replaceChildren(...[...select.options].map((o, index) => el('div', {
-      id: id + '-' + index, class: 'dropdown-option', role: 'option',
-      'aria-selected': String(index === select.selectedIndex), 'aria-disabled': String(o.disabled),
-      onpointerdown: e => e.preventDefault(), onclick: () => choose(index),
-    }, o.textContent)));
+    renderOptions(rebuild);
     if (button.disabled) close();
-    highlight(enabled().includes(active) ? active : enabled().includes(select.selectedIndex) ? select.selectedIndex : enabled()[0] ?? -1);
+    highlight(positions.has(active) ? active : positions.has(select.selectedIndex) ? select.selectedIndex : enabled[0] ?? -1);
+  };
+  const position = () => {
+    if (!calendar || list.hidden) return;
+    const anchor = button.getBoundingClientRect(), picker = $('build-time-picker');
+    if (picker.hidden || !rectIntersects(anchor, picker.getBoundingClientRect()) || !rectIntersects(anchor, calendarViewport(0))) { close(); return; }
+    positionCalendarOverlay(list, anchor, anchor.width, 240);
   };
   const open = () => {
+    sync();
     if (button.disabled) return;
     openDropdown?.close();
-    closeDatePicker();
-    sync();
+    if (!calendar) closeDatePicker();
     list.hidden = false;
     button.setAttribute('aria-expanded', 'true');
     openDropdown = control;
-    highlight(enabled().includes(select.selectedIndex) ? select.selectedIndex : enabled()[0] ?? -1);
+    position();
+    highlight(positions.has(select.selectedIndex) ? select.selectedIndex : enabled[0] ?? -1);
   };
-  const control = { button, sync, close };
+  const control = { select, button, sync, close, position };
   button.addEventListener('click', () => list.hidden ? open() : close());
   button.addEventListener('keydown', e => {
     if (e.key === 'Tab') { close(); return; }
@@ -531,10 +634,10 @@ function makeDropdown(select) {
       e.preventDefault();
       const wasClosed = list.hidden;
       if (wasClosed) open();
-      const options = enabled(), index = options.indexOf(active);
-      if (e.key === 'Home') highlight(options[0] ?? -1);
-      else if (e.key === 'End') highlight(options.at(-1) ?? -1);
-      else if (!wasClosed) highlight(options[Math.max(0, Math.min(options.length - 1, index + (e.key === 'ArrowDown' ? 1 : -1)))] ?? -1);
+      const index = positions.get(active) ?? -1;
+      if (e.key === 'Home') highlight(enabled[0] ?? -1);
+      else if (e.key === 'End') highlight(enabled.at(-1) ?? -1);
+      else if (!wasClosed) highlight(enabled[Math.max(0, Math.min(enabled.length - 1, index + (e.key === 'ArrowDown' ? 1 : -1)))] ?? -1);
       return;
     }
     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -543,20 +646,30 @@ function makeDropdown(select) {
       const now = performance.now();
       search = now - searchedAt > 700 ? e.key : search + e.key;
       searchedAt = now;
-      const options = enabled(), start = options.indexOf(active);
-      const ordered = [...options.slice(start + 1), ...options.slice(0, start + 1)];
-      let match = ordered.find(i => select.options[i].textContent.trim().toLocaleLowerCase().startsWith(search.toLocaleLowerCase()));
-      if (match === undefined && [...search].every(c => c === e.key)) {
-        search = e.key;
-        match = ordered.find(i => select.options[i].textContent.trim().toLocaleLowerCase().startsWith(search.toLocaleLowerCase()));
-      }
+      const findMatch = () => {
+        // The year source is ordered 1..9999: numeric typeahead jumps directly,
+        // including leading-zero years, without allocating or scanning 9999 rows.
+        if (windowed && /^\d{1,4}$/.test(search)) {
+          const index = Number(search) - 1;
+          return positions.has(index) ? index : undefined;
+        }
+        const start = positions.get(active) ?? -1, prefix = search.toLocaleLowerCase();
+        for (let step = 1; step <= enabled.length; step++) {
+          const index = enabled[(start + step) % enabled.length];
+          if (options[index].search.startsWith(prefix)) return index;
+        }
+      };
+      let match = findMatch();
+      if (match === undefined && [...search].every(c => c === e.key)) { search = e.key; match = findMatch(); }
       if (match !== undefined) highlight(match);
     }
   });
+  if (windowed) list.addEventListener('scroll', () => renderOptions());
   wrap.addEventListener('focusout', e => { if (!wrap.contains(e.relatedTarget)) close(); });
   document.addEventListener('pointerdown', e => { if (!wrap.contains(e.target)) close(); });
   select.addEventListener('change', sync);
-  new MutationObserver(sync).observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'selected', 'label'] });
+  const observer = new MutationObserver(records => { if (optionChanges(records)) optionsDirty = true; sync(); });
+  observer.observe(select, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['disabled', 'selected', 'label'] });
   dropdowns.set(select, control);
   sync();
 }
@@ -678,18 +791,93 @@ function calendarDate(year, month, day) {
   return date;
 }
 let selectedDate = null, calendarFocus = null;
+const calendarTimeFields = [$('calendar-hour'), $('calendar-minute'), $('calendar-second')];
+function fillCalendarSelect(id, count, start, label) {
+  const options = document.createDocumentFragment();
+  for (let value = start; value < start + count; value++) options.append(el('option', { value }, label(value)));
+  $(id).append(options);
+}
+fillCalendarSelect('calendar-year', 9999, 1, value => `${value} 年`);
+fillCalendarSelect('calendar-month', 12, 1, value => `${value} 月`);
+for (const [id, count] of [['calendar-hour', 24], ['calendar-minute', 60], ['calendar-second', 60]]) {
+  fillCalendarSelect(id, count, 0, value => String(value).padStart(2, '0'));
+}
+function calendarTimeValue() {
+  return calendarTimeFields.map(field => field.value.padStart(2, '0')).join(':');
+}
+function clearCalendarValidation() {
+  calendarTimeFields.forEach(clearFieldValidation);
+  showBanner('calendar-error', '');
+}
+function selectCalendarMonth() {
+  const year = Number($('calendar-year').value), month = Number($('calendar-month').value) - 1;
+  const lastDay = calendarDate(year, month + 1, 0).getDate();
+  selectedDate = calendarDate(year, month, Math.min(selectedDate.getDate(), lastDay));
+  calendarFocus = new Date(selectedDate);
+  renderCalendar();
+}
+for (const id of ['calendar-year', 'calendar-month']) $(id).addEventListener('change', selectCalendarMonth);
+$('build-time-picker').addEventListener('change', e => {
+  if (e.target.matches('select')) { e.stopPropagation(); clearCalendarValidation(); }
+});
 function syncBuildTime() {
   const date = parseLocalTime($('publish-form').build_time.value);
   $('build-time-trigger').textContent = date ? toLocalInput(date.getTime() / 1000).replace('T', ' ') : '选择日期与时间';
 }
+let calendarPositionFrame = 0, calendarFocusFrame = 0, calendarPositionEvents = null;
+const calendarSizeObserver = new ResizeObserver(() => scheduleCalendarPosition());
+function positionDatePicker() {
+  const picker = $('build-time-picker'), trigger = $('build-time-trigger'), dialog = $('publish-dialog');
+  if (picker.hidden) return;
+  const anchor = trigger.getBoundingClientRect(), rect = dialog.getBoundingClientRect();
+  const visibleDialog = { left: rect.left + dialog.clientLeft, top: rect.top + dialog.clientTop, right: rect.left + dialog.clientLeft + dialog.clientWidth, bottom: rect.top + dialog.clientTop + dialog.clientHeight };
+  if (!dialog.open || trigger.disabled || $('external-fields').hidden || !rectIntersects(anchor, visibleDialog) || !rectIntersects(anchor, calendarViewport(0))) { closeDatePicker(); return; }
+  positionCalendarOverlay(picker, anchor, 360, Infinity);
+  if (openDropdown && picker.contains(openDropdown.select)) openDropdown.position();
+}
+function scheduleCalendarPosition(event) {
+  if ($('build-time-picker').hidden || calendarPositionFrame || event?.target instanceof Element && event.target.closest('.dropdown-list')) return;
+  calendarPositionFrame = requestAnimationFrame(() => { calendarPositionFrame = 0; positionDatePicker(); });
+}
+function watchCalendarPosition() {
+  calendarPositionEvents?.abort();
+  calendarPositionEvents = new AbortController();
+  const options = { signal: calendarPositionEvents.signal, passive: true };
+  window.addEventListener('scroll', scheduleCalendarPosition, { ...options, capture: true });
+  window.addEventListener('resize', scheduleCalendarPosition, options);
+  window.visualViewport?.addEventListener('resize', scheduleCalendarPosition, options);
+  window.visualViewport?.addEventListener('scroll', scheduleCalendarPosition, options);
+  $('publish-dialog').addEventListener('animationend', scheduleCalendarPosition, options);
+  for (const node of [$('publish-dialog'), $('build-time-picker'), $('calendar-days'), $('calendar-error')]) calendarSizeObserver.observe(node);
+}
+function focusCalendarDay() {
+  const day = $('calendar-days').querySelector('[tabindex="0"]'), picker = $('build-time-picker');
+  if (!day || picker.hidden) return;
+  day.focus({ preventScroll: true });
+  const rect = day.getBoundingClientRect(), top = picker.getBoundingClientRect().top + picker.clientTop;
+  if (rect.top < top) picker.scrollTop += rect.top - top;
+  else if (rect.bottom > top + picker.clientHeight) picker.scrollTop += rect.bottom - top - picker.clientHeight;
+}
 function closeDatePicker(restore = false) {
+  calendarPositionEvents?.abort();
+  calendarPositionEvents = null;
+  calendarSizeObserver.disconnect();
+  cancelAnimationFrame(calendarPositionFrame);
+  calendarPositionFrame = 0;
+  cancelAnimationFrame(calendarFocusFrame);
+  calendarFocusFrame = 0;
+  if (openDropdown && $('build-time-picker').contains(openDropdown.select)) openDropdown.close();
   $('build-time-picker').hidden = true;
   $('build-time-trigger').setAttribute('aria-expanded', 'false');
-  if (restore && !$('external-fields').hidden) $('build-time-trigger').focus();
+  if (restore && $('publish-dialog').open && !$('external-fields').hidden && !$('build-time-trigger').disabled) $('build-time-trigger').focus({ preventScroll: true });
 }
 function renderCalendar(focus = false) {
   const year = calendarFocus.getFullYear(), month = calendarFocus.getMonth();
-  $('calendar-month').textContent = `${year} 年 ${month + 1} 月`;
+  $('calendar-year').value = String(year);
+  $('calendar-month').value = String(month + 1);
+  dropdowns.get($('calendar-year'))?.sync();
+  dropdowns.get($('calendar-month'))?.sync();
+  clearCalendarValidation();
   $('calendar-prev').disabled = year === 1 && month === 0;
   $('calendar-next').disabled = year === 9999 && month === 11;
   const first = calendarDate(year, month, 1).getDay();
@@ -714,7 +902,8 @@ function renderCalendar(focus = false) {
     rows.push(row);
   }
   $('calendar-days').replaceChildren(...rows);
-  if (focus) $('calendar-days').querySelector('[tabindex="0"]')?.focus();
+  positionDatePicker();
+  if (focus) focusCalendarDay();
 }
 function shiftCalendarMonth(delta, focus = false) {
   const date = calendarDate(calendarFocus.getFullYear(), calendarFocus.getMonth() + delta, 1);
@@ -743,11 +932,13 @@ function openDatePicker() {
   const current = parseLocalTime($('publish-form').build_time.value) || new Date();
   selectedDate = calendarDate(current.getFullYear(), current.getMonth(), current.getDate());
   calendarFocus = new Date(selectedDate);
-  $('calendar-time').value = toLocalInput(current.getTime() / 1000).split('T')[1];
-  $('calendar-time').removeAttribute('aria-invalid');
-  showBanner('calendar-error', '');
+  const time = [current.getHours(), current.getMinutes(), current.getSeconds()];
+  calendarTimeFields.forEach((field, index) => { field.value = String(time[index]); dropdowns.get(field)?.sync(); });
+  clearCalendarValidation();
   $('build-time-picker').hidden = false;
   $('build-time-trigger').setAttribute('aria-expanded', 'true');
+  $('build-time-picker').scrollTop = 0;
+  watchCalendarPosition();
   renderCalendar(true);
 }
 $('build-time-trigger').addEventListener('click', () => $('build-time-picker').hidden ? openDatePicker() : closeDatePicker(true));
@@ -756,17 +947,18 @@ $('calendar-next').addEventListener('click', () => shiftCalendarMonth(1));
 $('calendar-cancel').addEventListener('click', () => closeDatePicker(true));
 $('calendar-clear').addEventListener('click', () => {
   $('publish-form').build_time.value = '';
+  clearFieldValidation($('publish-form').build_time);
+  clearCalendarValidation();
   syncBuildTime();
   closeDatePicker(true);
 });
 $('calendar-apply').addEventListener('click', () => {
-  const time = $('calendar-time').value.trim();
   const pad = n => String(n).padStart(2, '0');
   const datePart = `${String(selectedDate.getFullYear()).padStart(4, '0')}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`;
-  const value = datePart + 'T' + (/^\d{2}:\d{2}$/.test(time) ? time + ':00' : time);
+  const value = datePart + 'T' + calendarTimeValue();
   const date = parseLocalTime(value);
   if (!date || date.getTime() <= 0) {
-    invalidField($('calendar-time'), 'calendar-error', '请输入有效的本地时间 HH:mm:ss（时间须晚于 Unix 纪元；夏令时跳过的时间不可用）。');
+    invalidField($('calendar-hour'), 'calendar-error', '请选择有效的本地时间（时间须晚于 Unix 纪元；夏令时跳过的时间不可用）。');
     return;
   }
   const field = $('publish-form').build_time;
@@ -779,8 +971,16 @@ for (const node of [$('build-time-trigger'), $('build-time-picker')]) {
   node.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !$('build-time-picker').hidden) { e.preventDefault(); e.stopPropagation(); closeDatePicker(true); }
   });
+  node.addEventListener('focusout', e => {
+    const picker = $('build-time-picker'), trigger = $('build-time-trigger');
+    // Native focus transitions may expose BODY until focusin, even after a microtask.
+    if (picker.hidden || picker.contains(e.relatedTarget) || e.relatedTarget === trigger || calendarFocusFrame) return;
+    calendarFocusFrame = requestAnimationFrame(() => {
+      calendarFocusFrame = 0;
+      if (!picker.hidden && !picker.contains(document.activeElement) && document.activeElement !== trigger) closeDatePicker();
+    });
+  });
 }
-$('calendar-time').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('calendar-apply').click(); } });
 document.addEventListener('pointerdown', e => {
   if (!$('build-time-picker').hidden && !$('build-time-picker').contains(e.target) && !$('build-time-trigger').contains(e.target)) closeDatePicker();
 });
@@ -807,6 +1007,7 @@ function showBanner(id, msg) {
   const n = $(id);
   n.textContent = msg || '';
   n.hidden = !msg;
+  if (id === 'calendar-error' || id === 'publish-error' || id === 'publish-warn') scheduleCalendarPosition();
 }
 
 class AuthError extends Error {}
@@ -1149,6 +1350,7 @@ function validatePublish() {
 
 async function submitPublish(e) {
   e.preventDefault();
+  closeDatePicker();
   if ($('publish-submit').disabled || !validatePublish()) return;
   const body = publishBody();
   const exists = state.releases.some(r => r.device === body.device && r.channel === body.channel);
@@ -1226,7 +1428,13 @@ $('publish-form').addEventListener('change', syncPublishForm);
 $('publish-form').device.addEventListener('input', syncPublishForm);
 $('publish-close').addEventListener('click', () => $('publish-dialog').close());
 $('publish-dialog').addEventListener('close', () => { openDropdown?.close(); closeDatePicker(); });
-$('publish-form').addEventListener('reset', () => queueMicrotask(() => { if (state && $('publish-form').file.options.length) syncPublishForm(); }));
+$('publish-dialog').addEventListener('cancel', e => {
+  if ($('build-time-picker').hidden) return;
+  e.preventDefault();
+  if (openDropdown && $('build-time-picker').contains(openDropdown.select)) openDropdown.close(true);
+  else closeDatePicker(true);
+});
+$('publish-form').addEventListener('reset', () => { openDropdown?.close(); closeDatePicker(); queueMicrotask(() => { if (state && $('publish-form').file.options.length) syncPublishForm(); }); });
 document.querySelectorAll('#publish-form select').forEach(makeDropdown);
 syncFileChooser();
 window.addEventListener('beforeunload', e => { if (uploadXHR) e.preventDefault(); });

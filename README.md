@@ -21,7 +21,7 @@ docker compose up -d
 
 `compose.yaml` 只把端口绑定在 `127.0.0.1:8080`，由本机的 HTTPS 反向代理转发；数据存放在命名卷 `ota-data`。升级：`docker compose pull && docker compose up -d`。
 
-默认使用完整版本号 `0.2.2`。升级到其他版本时，在 `.env` 设置 `OTA_IMAGE_TAG=X.Y.Z` 后再执行升级命令。正式镜像由 `vX.Y.Z` Git 标签发布，对应镜像标签 `X.Y.Z`；`latest` 与 `X.Y` 是可变别名，`edge` 是 `main` 分支开发构建。
+默认使用完整版本号 `0.2.3`。升级到其他版本时，在 `.env` 设置 `OTA_IMAGE_TAG=X.Y.Z` 后再执行升级命令。正式镜像由 `vX.Y.Z` Git 标签发布，对应镜像标签 `X.Y.Z`；`latest` 与 `X.Y` 是可变别名，`edge` 是 `main` 分支开发构建。
 
 ### Docker
 
@@ -29,7 +29,7 @@ docker compose up -d
 docker run -d --name ota -p 8080:8080 \
   -v ota-data:/data \
   -e OTA_ADMIN_TOKEN=换成随机长字符串 \
-  ghcr.io/night-stars-1/rom-updater:0.2.2 \
+  ghcr.io/night-stars-1/rom-updater:0.2.3 \
   -base-url https://ota.example.com
 ```
 
@@ -65,7 +65,7 @@ OTA_ADMIN_TOKEN=... ./ota-server -base-url https://ota.example.com \
 
 后台登录使用固定账号 `admin`，管理令牌作为密码。认证成功后，支持 Credential Management API 的浏览器会收到密码保存请求；其他浏览器通过标准用户名/密码字段识别凭据。是否显示保存提示由浏览器设置和站点保存策略决定，生产环境应使用 HTTPS。登录会话仍只保存在当前标签页的 `sessionStorage`，退出会清除；密码管理器中保存的凭据由浏览器管理。
 
-网页下拉菜单、文件选择按钮、上传进度、日期时间选择和操作确认均使用统一的自定义组件，支持键盘操作。构建时间按浏览器本地时区选择，发布时转换为 Unix 秒。系统文件选择窗口和上传期间离开页面的安全提示仍由浏览器提供。
+网页下拉菜单、文件选择按钮、上传进度、日期时间选择和操作确认均使用统一的自定义组件，支持键盘操作。点击构建时间字段会弹出锚定该字段的日期浮层，不挤占表单布局；浮层根据屏幕空间向上或向下展开，窄屏内可滚动，点击外部或按 Escape 可关闭。构建时间通过年月选择框、日历和时分秒选择框设置；年份支持按键输入定位，变更年月会将超出该月的日期调整到月末，确定前的修改可取消。时间按浏览器本地时区选择，发布时转换为 Unix 秒，不接受夏令时跳过的本地时间。系统文件选择窗口和上传期间离开页面的安全提示仍由浏览器提供。
 
 命令行方式：
 

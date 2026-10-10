@@ -1,6 +1,6 @@
 services:
   ota:
-    image: ghcr.io/night-stars-1/rom-updater:${OTA_IMAGE_TAG:-0.2.2}
+    image: ghcr.io/night-stars-1/rom-updater:${OTA_IMAGE_TAG:-0.2.3}
     restart: unless-stopped
     command: ["-base-url", "${OTA_BASE_URL:?set OTA_BASE_URL in .env}"]
     environment:
