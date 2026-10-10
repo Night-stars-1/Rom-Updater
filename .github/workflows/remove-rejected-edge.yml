@@ -1,0 +1,37 @@
+name: remove-rejected-edge
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  remove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const packageName = 'rom-updater';
+            const digest = 'sha256:4be59fcb14cb1e50e3c83cb977ceb2e74fe3e13c20d7ceb87023a23f27c06afe';
+            const params = { username: owner, package_type: 'container', package_name: packageName, per_page: 100 };
+            const versions = await github.paginate('GET /users/{username}/packages/{package_type}/{package_name}/versions', params);
+            const target = versions.find(version => version.name === digest);
+            if (!target) throw new Error(`Expected version not found: ${digest}`);
+            const tags = target.metadata?.container?.tags ?? [];
+            if (tags.length !== 1 || tags[0] !== 'edge') {
+              throw new Error(`Refusing to delete unexpected tags: ${JSON.stringify(tags)}`);
+            }
+            const result = await github.request('DELETE /users/{username}/packages/{package_type}/{package_name}/versions/{package_version_id}', {
+              ...params, package_version_id: target.id,
+            });
+            if (result.status !== 204) throw new Error(`Unexpected delete status: ${result.status}`);
+            core.info(`Deleted exact rejected edge version ${target.id}: ${digest}`);
+            const remaining = await github.paginate('GET /users/{username}/packages/{package_type}/{package_name}/versions', params);
+            if (remaining.some(version => version.metadata?.container?.tags?.includes('edge'))) {
+              throw new Error('An edge tag still exists; no additional versions were deleted.');
+            }
+            core.info('Verified: no active version carries the edge tag.');
