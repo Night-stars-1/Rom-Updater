@@ -3,12 +3,13 @@ package main
 import (
 	"crypto/sha256"
 	"crypto/subtle"
-	_ "embed"
+	"embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -16,8 +17,19 @@ import (
 	"strings"
 )
 
-//go:embed web/admin.html
+//go:embed web/dist/index.html
 var adminHTML []byte
+
+//go:embed web/dist/assets
+var adminAssets embed.FS
+
+var adminAssetHandler = func() http.Handler {
+	assets, err := fs.Sub(adminAssets, "web/dist/assets")
+	if err != nil {
+		panic(err)
+	}
+	return http.StripPrefix("/admin/assets/", http.FileServerFS(assets))
+}()
 
 type admin struct {
 	cat       *catalog
@@ -210,10 +222,17 @@ func serveUI(w http.ResponseWriter, r *http.Request) {
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
 	h.Set("Cache-Control", "no-cache")
-	h.Set("Content-Security-Policy", "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+	h.Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Referrer-Policy", "no-referrer")
 	w.Write(adminHTML)
+}
+
+// serveAdminAsset serves Vite's content-hashed files from the binary.
+func serveAdminAsset(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	adminAssetHandler.ServeHTTP(w, r)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

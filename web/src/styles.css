@@ -1,0 +1,590 @@
+/* Rom-Updater admin console — layout, surfaces and the few pieces Naive UI
+   does not own (thin top bar, view toolbar, data tables, calendar grid).
+   Component styling comes from Naive UI + the theme overrides in App.vue; this
+   file only adds the console's own skin and the responsive shell.
+
+   Theme tokens follow the `data-theme` attribute App.vue keeps in sync with the
+   OS preference, so the hand-built surfaces track Naive's light/dark themes.
+   No gradients and no large shadows: flat surfaces, 1px borders, 8–10px radii. */
+
+:root {
+  --admin-canvas: #f2f3f8;
+  --admin-surface: #ffffff;
+  --admin-surface-muted: #f7f8fc;
+  --admin-border: #e3e5ee;
+  --admin-border-strong: #d3d6e4;
+  --admin-text: #1b1f2b;
+  --admin-text-muted: #6a7183;
+  --admin-text-faint: #8d93a3;
+  --admin-primary: #5558d9;
+  --admin-primary-soft: rgba(85, 88, 217, 0.09);
+  --admin-shadow-sm: 0 1px 2px rgba(19, 23, 38, 0.05);
+  --admin-header-bg: rgba(242, 243, 248, 0.86);
+  --admin-radius: 10px;
+  --admin-radius-sm: 8px;
+}
+
+[data-theme='dark'] {
+  --admin-canvas: #0f1014;
+  --admin-surface: #18181c;
+  --admin-surface-muted: #1d1d23;
+  --admin-border: #2a2a33;
+  --admin-border-strong: #3a3a45;
+  --admin-text: #e9e9ee;
+  --admin-text-muted: #a2a5b3;
+  --admin-text-faint: #7c7f8c;
+  --admin-primary: #a5b4fc;
+  --admin-primary-soft: rgba(165, 180, 252, 0.14);
+  --admin-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --admin-header-bg: rgba(15, 16, 20, 0.86);
+}
+
+/* The console's own boxes are sized with padding and borders included: the top
+   bar, the view toolbar and the content column all declare widths that would
+   otherwise grow by their padding and overflow the viewport on mobile. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--admin-canvas);
+  color: var(--admin-text);
+  -webkit-text-size-adjust: 100%;
+}
+
+.admin-app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--admin-canvas);
+  color: var(--admin-text);
+}
+
+/* ---------------------------------------------------------------- icons -- */
+
+.admin-icon {
+  display: block;
+  flex: none;
+}
+
+/* -------------------------------------------------------------- top bar -- */
+
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 20px;
+  background: var(--admin-header-bg);
+  border-bottom: 1px solid var(--admin-border);
+  backdrop-filter: blur(10px);
+}
+
+.admin-topbar-brand {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  min-width: 0;
+}
+
+.admin-topbar-logo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+  border-radius: var(--admin-radius-sm);
+}
+
+.admin-topbar-name {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.admin-topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.admin-topbar-status {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: flex-end;
+  min-width: 0;
+  margin-right: 2px;
+}
+
+.admin-topbar-url {
+  max-width: 260px;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--admin-text-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-topbar-time {
+  font-size: 11px;
+  color: var(--admin-text-faint);
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------- content -- */
+
+.admin-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 1180px;
+  min-width: 0;
+  padding: 18px 20px 40px;
+  margin: 0 auto;
+}
+
+.admin-viewbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-tabs {
+  flex: 0 1 260px;
+  width: 260px;
+  max-width: 100%;
+}
+
+.admin-tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.admin-tabs [role='tab']:focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: -2px;
+  border-radius: var(--admin-radius-sm);
+}
+
+.admin-tab-count {
+  min-width: 20px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--admin-text-muted);
+  text-align: center;
+  background: var(--admin-surface-muted);
+  border-radius: 999px;
+}
+
+
+.admin-view-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.admin-view-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* --------------------------------------------------------------- tables -- */
+
+/* List root: replaces the NCard the tables used to render. */
+.admin-table-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+}
+
+.admin-table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-table-wrap:focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: -2px;
+}
+
+.admin-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.admin-table th {
+  padding: 9px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  text-align: left;
+  white-space: nowrap;
+  background: var(--admin-surface-muted);
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-table th:last-child,
+.admin-table td:last-child {
+  text-align: right;
+}
+
+.admin-table td {
+  padding: 10px 12px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-table tbody tr:hover td {
+  background: var(--admin-surface-muted);
+}
+
+.admin-cell-strong {
+  font-weight: 600;
+  color: var(--admin-text);
+}
+
+.admin-cell-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--admin-text-muted);
+}
+
+.admin-muted {
+  font-size: 12px;
+  color: var(--admin-text-muted);
+}
+
+.admin-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.admin-mono {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 12px;
+}
+
+.admin-trunc {
+  display: block;
+  max-width: 300px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.admin-link {
+  color: var(--admin-primary);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.admin-link:hover {
+  text-decoration: underline;
+}
+
+/* Empty state: short, centred and only as tall as the list needs. The
+   min-height of the scroll area is owned by the list components. */
+.admin-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  padding: 22px 16px;
+  text-align: center;
+}
+
+/* Row detail drawer: background/padding only; the list owns the inner layout. */
+.admin-row-details {
+  padding: 10px 12px 14px;
+  text-align: left;
+  background: var(--admin-surface-muted);
+  border-top: 1px dashed var(--admin-border);
+}
+
+.admin-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 18px;
+}
+
+.admin-detail-item {
+  min-width: 0;
+}
+
+.admin-detail-label {
+  display: block;
+  font-size: 11px;
+  color: var(--admin-text-faint);
+}
+
+/* Upload window: keep the card inside the viewport on short phone screens. */
+.admin-upload-modal .n-card__content {
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+
+/* ------------------------------------------------------------- progress -- */
+
+.admin-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.admin-progress-text {
+  font-size: 12.5px;
+  color: var(--admin-text-muted);
+}
+
+/* ---------------------------------------------------------------- login -- */
+
+.admin-login {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 32px 16px;
+  background: var(--admin-canvas);
+}
+
+.admin-login-card {
+  width: 100%;
+  max-width: 360px;
+}
+
+.admin-login-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.admin-login-logo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--admin-primary);
+  background: var(--admin-primary-soft);
+  border-radius: var(--admin-radius-sm);
+}
+
+.admin-login-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.admin-login-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--admin-text-muted);
+}
+
+.admin-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.admin-field-label {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--admin-text);
+}
+
+.admin-required {
+  color: #d03050;
+}
+
+.admin-hint {
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--admin-text-faint);
+}
+
+
+/* ------------------------------------------------------------- publish -- */
+
+.admin-publish-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-publish-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-publish-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: var(--admin-surface-muted);
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+}
+
+.admin-fieldset-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--admin-text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-confirm-text {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.admin-modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.admin-modal-footer .admin-spacer {
+  flex: 1 1 auto;
+}
+
+.admin-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ----------------------------------------------------------- responsive -- */
+
+@media (max-width: 900px) {
+  .admin-topbar {
+    padding: 10px 16px;
+  }
+
+  .admin-content {
+    padding: 16px 16px 36px;
+  }
+
+  .admin-publish-grid,
+  .admin-publish-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-topbar-status {
+    display: none;
+  }
+
+  .admin-viewbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-tabs {
+    flex-basis: auto;
+    width: 100%;
+  }
+
+  .admin-view-actions {
+    margin-left: 0;
+  }
+
+  .admin-view-actions .n-button {
+    flex: 1 1 auto;
+  }
+
+  .admin-trunc {
+    max-width: 210px;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

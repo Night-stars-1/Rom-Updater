@@ -1,6 +1,6 @@
 # Rom-Updater
 
-ROM OTA 更新服务端，Go 标准库实现，无第三方依赖。
+ROM OTA 更新服务端，Go 标准库实现，无第三方 Go 依赖。
 
 - `GET /ota/{device}/{channel}.json`：查询当前发布的版本
 - `GET|HEAD /ota/files/{file}`：下载 OTA 包，支持 `Range`/206、`Content-Range`、`Accept-Ranges`、`If-Range`；ETag 为包的 SHA-256
@@ -23,6 +23,15 @@ docker compose up -d
 
 默认使用完整版本号 `0.2.3`。升级到其他版本时，在 `.env` 设置 `OTA_IMAGE_TAG=X.Y.Z` 后再执行升级命令。正式镜像由 `vX.Y.Z` Git 标签发布，对应镜像标签 `X.Y.Z`；`latest` 与 `X.Y` 是可变别名，`edge` 是 `main` 分支开发构建。
 
+从当前源码构建并本地预览时，将 `.env` 的 `OTA_IMAGE_TAG` 设为 `local`，`OTA_BASE_URL` 设为本地地址（例如 `http://localhost:8080`），然后执行：
+
+```bash
+docker build -t ghcr.io/night-stars-1/rom-updater:local .
+docker compose up -d --pull never
+```
+
+Docker 构建会自动安装前端依赖、生成页面资源并嵌入 Go 二进制，无需在宿主机安装 Node.js。此 HTTP 配置只用于本地预览，生产环境仍需 HTTPS。
+
 ### Docker
 
 ```bash
@@ -42,7 +51,11 @@ docker run -d --name ota -p 8080:8080 \
 
 ### 直接运行
 
+从源码构建需要 Node.js 22.12+（推荐 22 LTS）和 npm。先生成 `web/dist/`，Go 才能嵌入管理界面；前端依赖版本由 `web/package-lock.json` 锁定。
+
 ```bash
+npm --prefix web ci
+npm --prefix web run build
 go build -o ota-server .
 OTA_ADMIN_TOKEN=... ./ota-server -base-url https://ota.example.com \
   -tls-cert cert.pem -tls-key key.pem -addr :443
@@ -59,13 +72,37 @@ OTA_ADMIN_TOKEN=... ./ota-server -base-url https://ota.example.com \
 
 环境变量 `OTA_ADMIN_TOKEN` 未设置时，管理接口不注册（返回 404）。
 
+### 前端开发
+
+管理界面源码位于 `web/src/`，使用 Vue 3、TypeScript、Naive UI 和 Vite。先按上方步骤安装依赖并构建一次前端，再用两个终端启动：
+
+```bash
+# 终端一：本地 Go 管理 API（填写管理令牌）
+OTA_ADMIN_TOKEN=... go run . -addr 127.0.0.1:8080 -base-url http://localhost:8080
+
+# 终端二：Vite 热更新
+npm --prefix web run dev
+```
+
+打开 `http://127.0.0.1:5173/admin/`。Vite 只将管理 API 请求代理到 `127.0.0.1:8080`；生产资源使用 `/admin/` 作为基础路径。`web/node_modules/` 和 `web/dist/` 不提交到版本库，CI 在 Go 检查前构建前端。
+
 ## 发布新 ROM
 
 最简单的方式是打开 `https://ota.example.com/admin/`，用 `OTA_ADMIN_TOKEN` 登录后上传并发布。
 
-后台登录使用固定账号 `admin`，管理令牌作为密码。认证成功后，支持 Credential Management API 的浏览器会收到密码保存请求；其他浏览器通过标准用户名/密码字段识别凭据。是否显示保存提示由浏览器设置和站点保存策略决定，生产环境应使用 HTTPS。登录会话仍只保存在当前标签页的 `sessionStorage`，退出会清除；密码管理器中保存的凭据由浏览器管理。
+登录页只需输入 `OTA_ADMIN_TOKEN` 管理令牌，固定账号 `admin` 仅作为浏览器凭据的用户名，无需填写。认证成功后，支持 Credential Management API 的浏览器会收到密码保存请求；其他浏览器通过标准用户名 / 密码字段识别凭据。是否显示保存提示由浏览器设置和站点保存策略决定，生产环境应使用 HTTPS。登录会话仍只保存在当前标签页的 `sessionStorage`，退出会清除；密码管理器中保存的凭据由浏览器管理。
 
-网页下拉菜单、文件选择按钮、上传进度、日期时间选择和操作确认均使用统一的自定义组件，支持键盘操作。点击构建时间字段会弹出锚定该字段的日期浮层，不挤占表单布局；浮层根据屏幕空间向上或向下展开，窄屏内可滚动，点击外部或按 Escape 可关闭。构建时间通过年月选择框、日历和时分秒选择框设置；年份支持按键输入定位，变更年月会将超出该月的日期调整到月末，确定前的修改可取消。时间按浏览器本地时区选择，发布时转换为 Unix 秒，不接受夏令时跳过的本地时间。系统文件选择窗口和上传期间离开页面的安全提示仍由浏览器提供。
+管理后台使用 [Vue 3](https://vuejs.org/) 与 [Naive UI](https://www.naiveui.com/)，采用“版本 / 文件”两个视图，数量直接显示在切换标签上，不再常驻侧栏或统计卡。列表显示关键字段，更新说明、SHA-256 和完整元数据通过行内“详情”展开。上传在弹窗中完成；关闭窗口不会中断正在上传的文件，可通过工具条的“上传中”入口重新查看进度或取消，成功后自动进入发布窗口。生产构建输出到 `web/dist/`，随 Go 二进制嵌入；CSS / JavaScript 通过 `/admin/assets/` 同源提供，哈希资源可长期缓存，无外部 CDN 或字体服务依赖。Vue 与 Naive UI 的许可保留在 `web/public/assets/licenses.txt`。
+
+上传窗口使用 `NUpload / NUploadDragger`，可拖入 ZIP 或点击选择文件；每次选择一个文件，再次选择会替换当前文件。拖入后不会自动提交，可先填写可选 SHA-256，再点击“上传”。上传期间选择器禁用，原有流式传输、进度、取消与上传后自动进入发布的行为保持不变。
+
+新建发布的“设备 / 通道”使用 `NAutoComplete`：可以自由输入新值，也可筛选并选择已有值。设备候选来自当前发布记录及上传包的设备元数据；通道候选来自当前发布记录，优先排列所选设备用过的通道，其他已有通道仍可选。编辑现有发布时，设备和通道作为主键继续只读。
+
+界面跟随系统浅色 / 深色模式，窄屏列表可局部横向滚动。列表数量与更新时间来自最近一次成功加载的清单；发布、上传、下架和删除后会重新加载，刷新按钮可手动同步。异常提示持续保留，不代表实时服务监控。
+
+登录的空令牌、认证成功 / 失败、退出、手动刷新、上传取消及操作结果统一使用右上角 Naive UI 通知，支持手动关闭；普通通知默认显示 3 秒，失败通知默认显示 8 秒。通知在发布与确认窗口上方也可操作，并提供屏幕阅读器播报。发布 / 上传字段校验、包与设备不匹配警告和清单异常继续显示在对应表单或页面内。
+
+页面的可见交互使用 Naive UI：视图切换为 `NTabs / NTab`，列表为 `NTable`，构建时间为 `NDatePicker` 的 `datetime` 面板，不使用手写日历或浏览器原生日期 / 时间输入。日期和时分秒可选择或手动输入，支持“确认 / 清除 / 此刻”；Escape 逐层关闭时间菜单和日期面板，不误关发布窗口。显示格式为 `yyyy-MM-dd HH:mm:ss`，内部保留本地时间字符串并在发布时转换为 Unix 秒；无效日期或夏令时跳过的时间不会被归一化或沿用旧值发布。系统文件选择窗口和上传期间离开页面的安全提示仍由浏览器提供。
 
 命令行方式：
 

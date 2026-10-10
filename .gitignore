@@ -4,3 +4,6 @@
 /releases.json
 /files/
 /.env
+# Frontend dependencies and build output
+/web/node_modules/
+/web/dist/

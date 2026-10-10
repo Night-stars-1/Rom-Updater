@@ -48,6 +48,7 @@ func main() {
 	if token := os.Getenv("OTA_ADMIN_TOKEN"); token != "" {
 		a := &admin{cat: cat, token: []byte(token), maxUpload: *maxUpload}
 		mux.HandleFunc("GET /admin/{$}", serveUI)
+		mux.HandleFunc("GET /admin/assets/{path...}", serveAdminAsset)
 		mux.Handle("GET /admin", http.RedirectHandler("/admin/", http.StatusMovedPermanently))
 		mux.HandleFunc("GET /admin/state", a.authorize(a.listState))
 		mux.HandleFunc("PUT /admin/files/{name}", a.authorize(a.upload))
