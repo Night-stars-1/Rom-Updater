@@ -26,7 +26,7 @@ jobs:
               throw new Error(`Refusing to delete unexpected tags: ${JSON.stringify(tags)}`);
             }
             const result = await github.request('DELETE /users/{username}/packages/{package_type}/{package_name}/versions/{package_version_id}', {
-              ...params, package_version_id: target.id,
+              username: owner, package_type: 'container', package_name: packageName, package_version_id: target.id,
             });
             if (result.status !== 204) throw new Error(`Unexpected delete status: ${result.status}`);
             core.info(`Deleted exact rejected edge version ${target.id}: ${digest}`);
