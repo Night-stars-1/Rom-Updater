@@ -21,7 +21,7 @@ docker compose up -d
 
 `compose.yaml` 只把端口绑定在 `127.0.0.1:8080`，由本机的 HTTPS 反向代理转发；数据存放在命名卷 `ota-data`。升级：`docker compose pull && docker compose up -d`。
 
-默认使用完整版本号 `0.2.4`。升级到其他版本时，在 `.env` 设置 `OTA_IMAGE_TAG=X.Y.Z` 后再执行升级命令。正式镜像仅由 `vX.Y.Z` Git 标签发布，对应镜像标签 `X.Y.Z`；`latest` 与 `X.Y` 是可变别名。普通 `main` 推送和拉取请求仅执行构建检查，不自动发布 `edge` 镜像。
+默认使用完整版本号 `0.2.5`。升级到其他版本时，在 `.env` 设置 `OTA_IMAGE_TAG=X.Y.Z` 后再执行升级命令。正式镜像仅由 `vX.Y.Z` Git 标签发布，对应镜像标签 `X.Y.Z`；`latest` 与 `X.Y` 是可变别名。普通 `main` 推送和拉取请求仅执行构建检查，不自动发布 `edge` 镜像。
 
 从当前源码构建并本地预览时，将 `.env` 的 `OTA_IMAGE_TAG` 设为 `local`，`OTA_BASE_URL` 设为本地地址（例如 `http://localhost:8080`），然后执行：
 
@@ -38,7 +38,7 @@ Docker 构建会自动安装前端依赖、生成页面资源并嵌入 Go 二进
 docker run -d --name ota -p 8080:8080 \
   -v ota-data:/data \
   -e OTA_ADMIN_TOKEN=换成随机长字符串 \
-  ghcr.io/night-stars-1/rom-updater:0.2.4 \
+  ghcr.io/night-stars-1/rom-updater:0.2.5 \
   -base-url https://ota.example.com
 ```
 
