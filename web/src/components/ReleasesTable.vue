@@ -91,14 +91,14 @@ function detailsId(index: number): string {
             <template v-for="(release, index) in rows" :key="rowKey(release)">
               <tr>
                 <td>
-                  <div class="admin-cell-strong">{{ release.device }}</div>
-                  <div class="admin-cell-secondary">
+                  <div class="rt-inline">
+                    <span class="admin-cell-strong">{{ release.device }}</span>
                     <NTag :bordered="false" size="small">{{ release.channel }}</NTag>
                   </div>
                 </td>
                 <td>
-                  <span class="admin-mono admin-cell-strong">{{ release.version }}</span>
-                  <div class="admin-cell-secondary">
+                  <div class="rt-inline">
+                    <span class="admin-mono admin-cell-strong">{{ release.version }}</span>
                     <NTag
                       :type="release.delivery === 'browser' ? 'info' : 'success'"
                       :bordered="false"
@@ -109,32 +109,34 @@ function detailsId(index: number): string {
                   </div>
                 </td>
                 <td>
-                  <span v-if="release.file" class="admin-mono admin-trunc" :title="release.file">
-                    {{ release.file }}
-                  </span>
-                  <a
-                    v-if="release.download_url"
-                    class="admin-mono admin-trunc admin-link"
-                    :href="release.download_url"
-                    target="_blank"
-                    rel="noreferrer"
-                    :title="release.download_url"
-                  >
-                    {{ release.download_url }}
-                  </a>
-                  <div
-                    v-if="release.file && !knownFiles.has(release.file)"
-                    class="admin-cell-secondary"
-                  >
-                    <NTag type="error" :bordered="false" size="small">包不存在</NTag>
+                  <div class="rt-inline">
+                    <span v-if="release.file" class="admin-mono admin-trunc" :title="release.file">
+                      {{ release.file }}
+                    </span>
+                    <a
+                      v-if="release.download_url"
+                      class="admin-mono admin-trunc admin-link"
+                      :href="release.download_url"
+                      target="_blank"
+                      rel="noreferrer"
+                      :title="release.download_url"
+                    >
+                      {{ release.download_url }}
+                    </a>
+                    <NTag
+                      v-if="release.file && !knownFiles.has(release.file)"
+                      type="error"
+                      :bordered="false"
+                      size="small"
+                    >包不存在</NTag>
+                    <NTag
+                      v-else-if="release.delivery === 'browser' && !release.file"
+                      type="info"
+                      :bordered="false"
+                      size="small"
+                    >外部发布</NTag>
+                    <span v-if="!release.file && !release.download_url" class="admin-muted">—</span>
                   </div>
-                  <div
-                    v-else-if="release.delivery === 'browser' && !release.file"
-                    class="admin-cell-secondary"
-                  >
-                    <NTag type="info" :bordered="false" size="small">外部发布</NTag>
-                  </div>
-                  <span v-if="!release.file && !release.download_url" class="admin-muted">—</span>
                 </td>
                 <td class="rt-actions-cell">
                   <div class="rt-actions">
@@ -224,6 +226,23 @@ function detailsId(index: number): string {
 
 <style scoped>
 /* Layout only: colours/typography come from the shared classes in styles.css. */
+
+.rt-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rt-inline > .n-tag {
+  flex: 0 0 auto;
+}
+
+.rt-inline > .admin-cell-strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 
 .admin-empty {
   align-items: center;
